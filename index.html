@@ -1,0 +1,36 @@
+  <!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AsztroApp</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <style>
+        body { font-family: -apple-system, sans-serif; text-align: center; padding: 20px; background: #f0f0f7; }
+        .card { background: white; padding: 20px; border-radius: 15px; shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>AsztroApp</h1>
+        <div id="adatok">Betöltés...</div>
+    </div>
+
+    <script>
+        // Ide jön majd a Google Script URL-ed!
+        const SCRIPT_URL = "IDE_MASOLD_MAJD_A_SCRIPT_URL-T";
+        
+        async function fetchAdat() {
+            try {
+                const response = await fetch(SCRIPT_URL);
+                const data = await response.json();
+                document.getElementById('adatok').innerText = JSON.stringify(data);
+            } catch (e) {
+                document.getElementById('adatok').innerText = "Várakozás az adatokra...";
+            }
+        }
+        fetchAdat();
+    </script>
+</body>
+</html>  
