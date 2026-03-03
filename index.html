@@ -132,19 +132,24 @@ function updateHomeUI() {
 
 async function runQuery() {
     const uid = document.getElementById('user-select').value;
-    const date = document.getElementById('date-select').value;
-    if(!uid || !date) return alert("Válassz felhasználót és dátumot!");
+    const dateVal = document.getElementById('date-select').value;
+    if(!uid || !dateVal) return alert("Válassz felhasználót és dátumot!");
+
+    // Biztosítsuk, hogy a dátum éjfélkor legyen (időzóna eltolódás ellen)
+    const dateObj = new Date(dateVal);
+    dateObj.setHours(0, 0, 0, 0);
+    const finalDate = dateObj.toISOString(); 
 
     try {
         const resp = await fetch(SCRIPT_URL, { 
             method: 'POST', 
-            body: JSON.stringify({ action: 'query', userID: uid, lekerdezettDatum: date }) 
+            body: JSON.stringify({ action: 'query', userID: uid, lekerdezettDatum: finalDate }) 
         });
         const res = await resp.json();
-        renderReport(res, date);
+        renderReport(res, dateVal);
     } catch(e) { alert("Lekérdezési hiba."); }
 }
-
+    
 function renderReport(data, dateStr) {
     document.getElementById('res-name').innerText = "Eredmény: " + appData.users[data.userID];
     document.getElementById('res-date-change').value = dateStr;
