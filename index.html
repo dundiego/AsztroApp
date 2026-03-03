@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AsztroApp</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
         :root { --primary-blue: #00008b; --white: #ffffff; }
         body { font-family: -apple-system, sans-serif; margin: 0; padding: 15px; color: #333; }
@@ -149,23 +151,28 @@ function renderReport(data, dateStr) {
     const tbody = document.getElementById('result-body');
     tbody.innerHTML = "";
 
-    // 5-ös mátrix feldolgozása: [Jegy, Szöveg, R, G, B]
+    // 5-ös mátrix feldolgozása: [0: Jegy, 1: Szöveg, 2: R, 3: G, 4: B]
     for(let i = 0; i < PLANETS.length; i++) {
         const base = i * 5;
+        const jegy = data.resultMatrix[base];
+        const hatasSzoveg = data.resultMatrix[base+1];
+        const r = data.resultMatrix[base+2];
+        const g = data.resultMatrix[base+3];
+        const b = data.resultMatrix[base+4];
+        const rgbColor = `rgb(${r},${g},${b})`;
+
         const row = `<tr>
             <td>${PLANETS[i]}</td>
-            <td>${data.resultMatrix[base]}</td>
-            <td>
-                <div class="color-box" style="background-color: rgb(${data.resultMatrix[base+2]},${data.resultMatrix[base+3]},${data.resultMatrix[base+4]})" 
-                     aria-label="Színkódolt hatás: ${data.resultMatrix[base+1]}">
-                </div>
+            <td>${jegy}</td>
+            <td style="background-color: ${rgbColor}; color: ${rgbColor};">
+                ${hatasSzoveg}
             </td>
         </tr>`;
         tbody.innerHTML += row;
     }
     showView('report-view');
 }
-
+    
 async function submitRegistration() {
     const name = document.getElementById('reg-name').value;
     if(!name) return alert("Név kitöltése kötelező!");
