@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AsztroApp</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
         :root { --primary-blue: #00008b; --white: #ffffff; }
         body { font-family: -apple-system, sans-serif; margin: 0; padding: 15px; color: #333; }
@@ -68,17 +68,16 @@
 <script>
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzjTLiafkYuXfYCY_XQIhCqPoOwC0_yDx0R6IJ1eQe6gBxckVXb1gIFFQpXvDsno9H61A/exec";
 const PLANETS = ["Nap", "ASC", "Hold", "Merkúr", "Vénusz", "Mars"];
+const PLANET_KEYS = ["nap", "asc", "hold", "merkur", "venusz", "mars"]; // Ékezetmentes kulcsok
 const ZODIACS = ["Kos", "Bika", "Ikrek", "Rák", "Oroszlán", "Szűz", "Mérleg", "Skorpió", "Nyilas", "Bak", "Vízöntő", "Halak"];
 
 let appData = { users: {}, minDate: "", maxDate: "", actualUser: "" };
 
-// INICIALIZÁLÁS
 window.onload = async () => {
     generateRegFields();
     document.getElementById('date-select').valueAsDate = new Date();
     await loadInitialData();
     
-    // Figyeljük a dátumváltást a jelentés oldalon
     document.getElementById('res-date-change').addEventListener('change', function() {
         if(confirm("Szeretne új lekérdezést a módosított dátummal?")) {
             document.getElementById('date-select').value = this.value;
@@ -89,14 +88,17 @@ window.onload = async () => {
 
 function generateRegFields() {
     const cont = document.getElementById('reg-planets');
-    PLANETS.forEach(p => {
+    cont.innerHTML = "";
+    PLANETS.forEach((p, i) => {
         const label = document.createElement('label');
         label.innerText = p + ":";
         const sel = document.createElement('select');
-        sel.id = "reg-" + p.toLowerCase();
+        sel.id = "reg-" + PLANET_KEYS[i]; // Ékezetmentes ID
         ZODIACS.forEach(z => {
-            let opt = new Array(12);
-            sel.innerHTML += `<option value="${z}">${z}</option>`;
+            const opt = document.createElement('option');
+            opt.value = z;
+            opt.text = z;
+            sel.appendChild(opt);
         });
         cont.appendChild(label);
         cont.appendChild(sel);
@@ -112,7 +114,7 @@ async function loadInitialData() {
             updateHomeUI();
             if(!res.hasUsers) showView('reg-view');
         }
-    } catch(e) { alert("Hiba a betöltéskor."); }
+    } catch(e) { console.error(e); }
 }
 
 function updateHomeUI() {
@@ -135,7 +137,6 @@ async function runQuery() {
     const dateVal = document.getElementById('date-select').value;
     if(!uid || !dateVal) return alert("Válassz felhasználót és dátumot!");
 
-    // Biztosítsuk, hogy a dátum éjfélkor legyen (időzóna eltolódás ellen)
     const dateObj = new Date(dateVal);
     dateObj.setHours(0, 0, 0, 0);
     const finalDate = dateObj.toISOString(); 
@@ -156,7 +157,6 @@ function renderReport(data, dateStr) {
     const tbody = document.getElementById('result-body');
     tbody.innerHTML = "";
 
-    // 5-ös mátrix feldolgozása: [0: Jegy, 1: Szöveg, 2: R, 3: G, 4: B]
     for(let i = 0; i < PLANETS.length; i++) {
         const base = i * 5;
         const jegy = data.resultMatrix[base];
@@ -183,7 +183,10 @@ async function submitRegistration() {
     if(!name) return alert("Név kitöltése kötelező!");
     
     const body = { action: 'register', name: name, email: document.getElementById('reg-email').value };
-    PLANETS.forEach(p => body[p.toLowerCase()] = document.getElementById("reg-" + p.toLowerCase()).value);
+    // Itt is az ékezetmentes kulcsokkal gyűjtjük be az adatokat
+    PLANET_KEYS.forEach(key => {
+        body[key] = document.getElementById("reg-" + key).value;
+    });
 
     try {
         const resp = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(body) });
@@ -202,4 +205,4 @@ function showView(id) {
 }
 </script>
 </body>
-</html>  
+</html>
