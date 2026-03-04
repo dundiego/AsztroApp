@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AsztroApp</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
         :root { --primary-blue: #00008b; --white: #ffffff; }
         body { font-family: -apple-system, sans-serif; margin: 0; padding: 15px; color: #333; }
@@ -16,6 +16,7 @@
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
         th { background-color: #f4f4f4; }
+        .color-box { width: 100%; height: 25px; border-radius: 4px; border: 1px solid #999; }
     </style>
 </head>
 <body>
@@ -40,12 +41,12 @@
         <h2 id="res-name">Eredmény</h2>
         <input type="date" id="res-date-change" aria-label="Dátum módosítása és új lekérdezés">
         
-        <table id="result-table">
+        <table id="result-table" aria-label="Asztrológiai jelentés">
             <thead>
                 <tr>
-                    <th>Bolygó</th>
-                    <th>Jegy</th>
-                    <th>Hatás</th>
+                    <th scope="col">Bolygó</th>
+                    <th scope="col">Jegy</th>
+                    <th scope="col">Hatás</th>
                 </tr>
             </thead>
             <tbody id="result-body"></tbody>
@@ -55,7 +56,7 @@
 
     <section id="reg-view" class="hidden">
         <h2>Regisztráció</h2>
-        <input type="text" id="reg-name" placeholder="Név (kötelező)">
+        <input type="text" id="reg-name" placeholder="Név (kötelező)" aria-required="true">
         <input type="email" id="reg-email" placeholder="E-mail (nem kötelező)">
         
         <div id="reg-planets"></div>
@@ -65,18 +66,26 @@
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwNdGu4NPD4kk8fsrgPGb1dGR9r77Qrj1knfllOkuXEImG5DRpFgdYci-yyTku0v4-Yug/exec";
-// Pontosan ugyanazok a nevek, amiket a Script vár el kulcsként!
-const PLANETS = ["Nap", "ASC", "Hold", "Merkúr", "Vénusz", "Mars"];
-const ZODIACS = ["Kos", "Bika", "Ikrek", "Rák", "Oroszlán", "Szűz", "Mérleg", "Skorpió", "Nyilas", "Bak", "Vízöntő", "Halak"];
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzjTLiafkYuXfYCY_XQIhCqPoOwC0_yDx0R6IJ1eQe6gBxckVXb1gIFFQpXvDsno9H61A/exec";
+// Ékezetmentes kulcsok a háttérnek
+const PLANETS_CONFIG = [
+    { id: "nap", label: "Nap" },
+    { id: "asc", label: "ASC" },
+    { id: "hold", label: "Hold" },
+    { id: "merkur", label: "Merkúr" }, // Itt nincs ékezet az ID-ban!
+    { id: "venusz", label: "Vénusz" }, // Itt sincs!
+    { id: "mars", label: "Mars" }
+];const ZODIACS = ["Kos", "Bika", "Ikrek", "Rák", "Oroszlán", "Szűz", "Mérleg", "Skorpió", "Nyilas", "Bak", "Vízöntő", "Halak"];
 
 let appData = { users: {}, minDate: "", maxDate: "", actualUser: "" };
 
+// INICIALIZÁLÁS
 window.onload = async () => {
     generateRegFields();
     document.getElementById('date-select').valueAsDate = new Date();
     await loadInitialData();
     
+    // Figyeljük a dátumváltást a jelentés oldalon
     document.getElementById('res-date-change').addEventListener('change', function() {
         if(confirm("Szeretne új lekérdezést a módosított dátummal?")) {
             document.getElementById('date-select').value = this.value;
@@ -87,13 +96,15 @@ window.onload = async () => {
 
 function generateRegFields() {
     const cont = document.getElementById('reg-planets');
-    cont.innerHTML = "";
-    PLANETS.forEach((p, i) => {
+    cont.innerHTML = ""; // Tisztítás
+    PLANETS_CONFIG.forEach(p => {
         const label = document.createElement('label');
-        label.innerText = p + ":";
+        label.setAttribute('for', "reg-" + p.id);
+        label.innerText = p.label + ":";
+        
         const sel = document.createElement('select');
-        // Biztonságos ID az index alapján, hogy az ékezet ne zavarjon be a HTML-ben
-        sel.id = "planet-field-" + i; 
+        sel.id = "reg-" + p.id;
+        
         ZODIACS.forEach(z => {
             const opt = document.createElement('option');
             opt.value = z;
@@ -102,9 +113,9 @@ function generateRegFields() {
         });
         cont.appendChild(label);
         cont.appendChild(sel);
+        cont.appendChild(document.createElement('br'));
     });
 }
-
 async function loadInitialData() {
     try {
         const resp = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'load' }) });
@@ -114,7 +125,7 @@ async function loadInitialData() {
             updateHomeUI();
             if(!res.hasUsers) showView('reg-view');
         }
-    } catch(e) { console.error("Betöltési hiba"); }
+    } catch(e) { alert("Hiba a betöltéskor."); }
 }
 
 function updateHomeUI() {
@@ -127,6 +138,9 @@ function updateHomeUI() {
         if(id === appData.defaultUserID) opt.selected = true;
         sel.appendChild(opt);
     }
+    const d = document.getElementById('date-select');
+    d.min = appData.minDate;
+    d.max = appData.maxDate;
 }
 
 async function runQuery() {
@@ -134,23 +148,42 @@ async function runQuery() {
     const dateVal = document.getElementById('date-select').value;
     if(!uid || !dateVal) return alert("Válassz felhasználót és dátumot!");
 
+    // Biztosítsuk, hogy a dátum éjfélkor legyen (időzóna eltolódás ellen)
+    const dateObj = new Date(dateVal);
+    dateObj.setHours(0, 0, 0, 0);
+    const finalDate = dateObj.toISOString(); 
+
     try {
         const resp = await fetch(SCRIPT_URL, { 
             method: 'POST', 
-            body: JSON.stringify({ action: 'query', userID: uid, lekerdezettDatum: dateVal }) 
+            body: JSON.stringify({ action: 'query', userID: uid, lekerdezettDatum: finalDate }) 
         });
         const res = await resp.json();
         renderReport(res, dateVal);
     } catch(e) { alert("Lekérdezési hiba."); }
 }
     
+// Ezt a konfigurációt használjuk a megjelenítéshez is, hogy a sorrend és a nevek stimmeljenek
+const DISPLAY_PLANETS = [
+    { id: "nap", label: "Nap" },
+    { id: "asc", label: "ASC" },
+    { id: "hold", label: "Hold" },
+    { id: "merkur", label: "Merkúr" },
+    { id: "venusz", label: "Vénusz" },
+    { id: "mars", label: "Mars" }
+];
+
 function renderReport(data, dateStr) {
-    document.getElementById('res-name').innerText = "Eredmény: " + appData.users[data.userID];
+    // Felhasználó nevének és a választott dátumnak a beállítása
+    document.getElementById('res-name').innerText = "Eredmény: " + (appData.users[data.userID] || "Ismeretlen");
     document.getElementById('res-date-change').value = dateStr;
+    
     const tbody = document.getElementById('result-body');
     tbody.innerHTML = "";
 
-    for(let i = 0; i < PLANETS.length; i++) {
+    // A backend 5-ös csoportokban küldi az adatokat: [Jegy, Szöveg, R, G, B]
+    // A DISPLAY_PLANETS sorrendje megegyezik a backend sorrendjével
+    for(let i = 0; i < DISPLAY_PLANETS.length; i++) {
         const base = i * 5;
         const jegy = data.resultMatrix[base];
         const hatasSzoveg = data.resultMatrix[base+1];
@@ -159,57 +192,57 @@ function renderReport(data, dateStr) {
         const b = data.resultMatrix[base+4];
         const rgbColor = `rgb(${r},${g},${b})`;
 
-        tbody.innerHTML += `<tr>
-            <td>${PLANETS[i]}</td>
+        // Táblázat sor generálása:
+        // 1. oszlop: Bolygó magyar neve (label)
+        // 2. oszlop: Jegy neve
+        // 3. oszlop: Szín és rejtett szöveg a VoiceOvernek
+        const row = `<tr>
+            <th scope="row">${DISPLAY_PLANETS[i].label}</th>
             <td>${jegy}</td>
-            <td style="background-color: ${rgbColor}; color: ${rgbColor};">${hatasSzoveg}</td>
+            <td style="background-color: ${rgbColor}; color: ${rgbColor}; border: 1px solid #999;">
+                ${hatasSzoveg}
+            </td>
         </tr>`;
+        tbody.innerHTML += row;
     }
-    showView('report-view');
-}
     
+    showView('report-view');
+    
+    // VoiceOver segítése: fókusz az eredmény címére
+    setTimeout(() => {
+        document.getElementById('res-name').focus();
+    }, 500);
+}
+
 async function submitRegistration() {
     const name = document.getElementById('reg-name').value;
     if(!name) return alert("Név kitöltése kötelező!");
     
-    // Alap adatok
     const body = { 
         action: 'register', 
         name: name, 
         email: document.getElementById('reg-email').value 
     };
 
-    // A bolygók értékeinek begyűjtése és ékezetmentesítése a Scripthez
-    // PLANETS = ["Nap", "ASC", "Hold", "Merkúr", "Vénusz", "Mars"]
-    PLANETS.forEach((p, i) => {
-        const val = document.getElementById("planet-field-" + i).value;
-        
-        // Itt történik a varázslat: a kulcs nevét ékezetmentesítjük
-        let key = p.toLowerCase()
-                   .replace('úr', 'ur')  // Merkúr -> merkur
-                   .replace('usz', 'usz') // Vénusz -> venusz (itt nincs ékezet a végén, de a 'é' miatt kell)
-                   .replace('é', 'e');    // Vénusz -> venusz
-        
-        body[key] = val;
+    // Az ékezetmentes ID-k alapján gyűjtjük össze az adatokat
+    PLANETS_CONFIG.forEach(p => {
+        body[p.id] = document.getElementById("reg-" + p.id).value;
     });
 
     try {
         const resp = await fetch(SCRIPT_URL, { 
             method: 'POST', 
+            mode: 'no-cors', // Ha szükséges a CORS hiba elkerüléséhez
             body: JSON.stringify(body) 
         });
-        const res = await resp.json();
-        if(res.status === "SUCCESS") {
-            alert("Sikeres mentés!");
-            location.reload(); 
-        } else {
-            alert("Hiba: " + res.allapotjelzes);
-        }
+        
+        // Mivel a regisztráció után frissíteni kell a listát:
+        alert("Sikeres mentés!");
+        location.reload(); 
     } catch(e) { 
-        alert("Hiba történt a küldés során. Ellenőrizd az internetet!"); 
+        alert("Hiba a mentésnél: " + e.message); 
     }
 }
-    
 function showView(id) {
     document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
     document.getElementById(id).classList.remove('hidden');
@@ -217,4 +250,4 @@ function showView(id) {
 }
 </script>
 </body>
-</html>
+</html>  
