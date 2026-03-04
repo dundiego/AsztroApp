@@ -67,7 +67,8 @@
 
 <script>
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwJhEEv7KfPryqCOzmxw7ySdZbBkZIAgTQWRRI0zA9vvTUkYXBKCJ8SfOoPxKtczisuhA/exec";
-// Ékezetmentes kulcsok a háttérnek
+   
+    // Ékezetmentes kulcsok a háttérnek
 const PLANETS_CONFIG = [
     { id: "nap", label: "Nap" },
     { id: "asc", label: "ASC" },
@@ -75,14 +76,20 @@ const PLANETS_CONFIG = [
     { id: "merkur", label: "Merkúr" }, // Itt nincs ékezet az ID-ban!
     { id: "venusz", label: "Vénusz" }, // Itt sincs!
     { id: "mars", label: "Mars" }
-];const ZODIACS = ["Kos", "Bika", "Ikrek", "Rák", "Oroszlán", "Szűz", "Mérleg", "Skorpió", "Nyilas", "Bak", "Vízöntő", "Halak"];
+];
+    const ZODIACS = ["Kos", "Bika", "Ikrek", "Rák", "Oroszlán", "Szűz", "Mérleg", "Skorpió", "Nyilas", "Bak", "Vízöntő", "Halak"];
 
 let appData = { users: {}, minDate: "", maxDate: "", actualUser: "" };
 
 // INICIALIZÁLÁS
+// INICIALIZÁLÁS
 window.onload = async () => {
     generateRegFields();
     document.getElementById('date-select').valueAsDate = new Date();
+    
+    // ENTER-kezelés a regisztrációs mezőkhöz
+    setupNavigation();
+
     await loadInitialData();
     
     // Figyeljük a dátumváltást a jelentés oldalon
@@ -94,7 +101,48 @@ window.onload = async () => {
     });
 };
 
-function generateRegFields() {
+// Navigáció javítása Enter billentyűre
+function setupNavigation() {
+    const nameInput = document.getElementById('reg-name');
+    const emailInput = document.getElementById('reg-email');
+
+    // Név -> Email (Itt még marad a billentyűzet, mert írni akarunk)
+    nameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            emailInput.focus();
+        }
+    });
+
+    // Email -> Első választó + Billentyűzet bezárása
+    emailInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            
+            // 1. Billentyűzet bezárása: kivesszük a fókuszt az írható mezőből
+            emailInput.blur(); 
+            
+            // 2. Fókusz áthelyezése a legördülőre (ez iOS-en nem nyitja fel a billentyűzetet)
+            const firstSelect = document.getElementById('reg-nap');
+            if (firstSelect) {
+                firstSelect.focus();
+            }
+        }
+    });
+}
+    // Email -> Első bolygó választó (Nap)
+    emailInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            // A PLANETS_CONFIG első eleme a 'nap', így az ID: reg-nap
+            const firstSelect = document.getElementById('reg-nap');
+            if (firstSelect) firstSelect.focus();
+        }
+    });
+}
+
+    
+    function generateRegFields() {
     const cont = document.getElementById('reg-planets');
     cont.innerHTML = ""; // Tisztítás
     PLANETS_CONFIG.forEach(p => {
