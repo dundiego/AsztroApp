@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AsztroApp</title>
-    <link rel="apple-touch-icon" href="Asztroapp_ikon_180.png">
+    <link rel="apple-touch-icon" href="asztroApp_ikon_180.png">
+    <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
         :root { --primary-blue: #00008b; --white: #ffffff; }
         body { font-family: -apple-system, sans-serif; margin: 0; padding: 15px; color: #333; }
-        h1, h2 { color: var(--primary-blue); }
+        h1, h2 { color: var(--primary-blue); outline: none; }
         .hidden { display: none; }
         .btn-main { background-color: var(--primary-blue); color: var(--white); padding: 12px; border: none; border-radius: 8px; width: 100%; font-size: 16px; margin-top: 10px; cursor: pointer; }
         select, input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
         th { background-color: #f4f4f4; }
-        .color-box { width: 100%; height: 25px; border-radius: 4px; border: 1px solid #999; }
     </style>
 </head>
 <body>
@@ -25,7 +25,7 @@
 <div id="app">
     <section id="home-view">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h1>AsztroApp</h1>
+            <h1 tabindex="-1">AsztroApp</h1>
             <button id="btn-to-reg" onclick="showView('reg-view')" aria-label="Új felhasználó hozzáadása" style="font-size: 24px; background:none; border:none;">👤+</button>
         </div>
         
@@ -39,7 +39,7 @@
     </section>
 
     <section id="report-view" class="hidden">
-        <h2 id="res-name">Eredmény</h2>
+        <h2 id="res-name" tabindex="-1">Eredmény</h2>
         <input type="date" id="res-date-change" aria-label="Dátum módosítása és új lekérdezés">
         
         <table id="result-table" aria-label="Asztrológiai jelentés">
@@ -56,7 +56,7 @@
     </section>
 
     <section id="reg-view" class="hidden">
-        <h2>Regisztráció</h2>
+        <h2 tabindex="-1">Regisztráció</h2>
         <input type="text" id="reg-name" placeholder="Név (kötelező)" aria-required="true">
         <input type="email" id="reg-email" placeholder="E-mail (nem kötelező)">
         
@@ -68,32 +68,26 @@
 
 <script>
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwJhEEv7KfPryqCOzmxw7ySdZbBkZIAgTQWRRI0zA9vvTUkYXBKCJ8SfOoPxKtczisuhA/exec";
-   
-    // Ékezetmentes kulcsok a háttérnek
+    
 const PLANETS_CONFIG = [
     { id: "nap", label: "Nap" },
     { id: "asc", label: "ASC" },
     { id: "hold", label: "Hold" },
-    { id: "merkur", label: "Merkúr" }, // Itt nincs ékezet az ID-ban!
-    { id: "venusz", label: "Vénusz" }, // Itt sincs!
+    { id: "merkur", label: "Merkúr" },
+    { id: "venusz", label: "Vénusz" },
     { id: "mars", label: "Mars" }
 ];
-    const ZODIACS = ["Kos", "Bika", "Ikrek", "Rák", "Oroszlán", "Szűz", "Mérleg", "Skorpió", "Nyilas", "Bak", "Vízöntő", "Halak"];
+const ZODIACS = ["Kos", "Bika", "Ikrek", "Rák", "Oroszlán", "Szűz", "Mérleg", "Skorpió", "Nyilas", "Bak", "Vízöntő", "Halak"];
 
 let appData = { users: {}, minDate: "", maxDate: "", actualUser: "" };
 
-// INICIALIZÁLÁS
-// INICIALIZÁLÁS
 window.onload = async () => {
     generateRegFields();
+    setupNavigation(); 
     document.getElementById('date-select').valueAsDate = new Date();
-    
-    // ENTER-kezelés a regisztrációs mezőkhöz
-    setupNavigation();
 
     await loadInitialData();
     
-    // Figyeljük a dátumváltást a jelentés oldalon
     document.getElementById('res-date-change').addEventListener('change', function() {
         if(confirm("Szeretne új lekérdezést a módosított dátummal?")) {
             document.getElementById('date-select').value = this.value;
@@ -102,12 +96,10 @@ window.onload = async () => {
     });
 };
 
-// Navigáció javítása Enter billentyűre
 function setupNavigation() {
     const nameInput = document.getElementById('reg-name');
     const emailInput = document.getElementById('reg-email');
 
-    // Név -> Email (Itt még marad a billentyűzet, mert írni akarunk)
     nameInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -115,37 +107,19 @@ function setupNavigation() {
         }
     });
 
-    // Email -> Első választó + Billentyűzet bezárása
     emailInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            
-            // 1. Billentyűzet bezárása: kivesszük a fókuszt az írható mezőből
             emailInput.blur(); 
-            
-            // 2. Fókusz áthelyezése a legördülőre (ez iOS-en nem nyitja fel a billentyűzetet)
-            const firstSelect = document.getElementById('reg-nap');
-            if (firstSelect) {
-                firstSelect.focus();
-            }
-        }
-    });
-}
-    // Email -> Első bolygó választó (Nap)
-    emailInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            // A PLANETS_CONFIG első eleme a 'nap', így az ID: reg-nap
             const firstSelect = document.getElementById('reg-nap');
             if (firstSelect) firstSelect.focus();
         }
     });
 }
 
-    
-    function generateRegFields() {
+function generateRegFields() {
     const cont = document.getElementById('reg-planets');
-    cont.innerHTML = ""; // Tisztítás
+    cont.innerHTML = ""; 
     PLANETS_CONFIG.forEach(p => {
         const label = document.createElement('label');
         label.setAttribute('for', "reg-" + p.id);
@@ -165,6 +139,7 @@ function setupNavigation() {
         cont.appendChild(document.createElement('br'));
     });
 }
+
 async function loadInitialData() {
     try {
         const resp = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'load' }) });
@@ -174,7 +149,7 @@ async function loadInitialData() {
             updateHomeUI();
             if(!res.hasUsers) showView('reg-view');
         }
-    } catch(e) { alert("Hiba a betöltéskor."); }
+    } catch(e) { console.error("Hiba:", e); }
 }
 
 function updateHomeUI() {
@@ -197,7 +172,6 @@ async function runQuery() {
     const dateVal = document.getElementById('date-select').value;
     if(!uid || !dateVal) return alert("Válassz felhasználót és dátumot!");
 
-    // Biztosítsuk, hogy a dátum éjfélkor legyen (időzóna eltolódás ellen)
     const dateObj = new Date(dateVal);
     dateObj.setHours(0, 0, 0, 0);
     const finalDate = dateObj.toISOString(); 
@@ -211,28 +185,15 @@ async function runQuery() {
         renderReport(res, dateVal);
     } catch(e) { alert("Lekérdezési hiba."); }
 }
-    
-// Ezt a konfigurációt használjuk a megjelenítéshez is, hogy a sorrend és a nevek stimmeljenek
-const DISPLAY_PLANETS = [
-    { id: "nap", label: "Nap" },
-    { id: "asc", label: "ASC" },
-    { id: "hold", label: "Hold" },
-    { id: "merkur", label: "Merkúr" },
-    { id: "venusz", label: "Vénusz" },
-    { id: "mars", label: "Mars" }
-];
 
 function renderReport(data, dateStr) {
-    // Felhasználó nevének és a választott dátumnak a beállítása
     document.getElementById('res-name').innerText = "Eredmény: " + (appData.users[data.userID] || "Ismeretlen");
     document.getElementById('res-date-change').value = dateStr;
     
     const tbody = document.getElementById('result-body');
     tbody.innerHTML = "";
 
-    // A backend 5-ös csoportokban küldi az adatokat: [Jegy, Szöveg, R, G, B]
-    // A DISPLAY_PLANETS sorrendje megegyezik a backend sorrendjével
-    for(let i = 0; i < DISPLAY_PLANETS.length; i++) {
+    for(let i = 0; i < PLANETS_CONFIG.length; i++) {
         const base = i * 5;
         const jegy = data.resultMatrix[base];
         const hatasSzoveg = data.resultMatrix[base+1];
@@ -241,12 +202,9 @@ function renderReport(data, dateStr) {
         const b = data.resultMatrix[base+4];
         const rgbColor = `rgb(${r},${g},${b})`;
 
-        // Táblázat sor generálása:
-        // 1. oszlop: Bolygó magyar neve (label)
-        // 2. oszlop: Jegy neve
-        // 3. oszlop: Szín és rejtett szöveg a VoiceOvernek
+        // Visszaállítva a "szín a színben" megoldás a VoiceOver miatt
         const row = `<tr>
-            <th scope="row">${DISPLAY_PLANETS[i].label}</th>
+            <th scope="row">${PLANETS_CONFIG[i].label}</th>
             <td>${jegy}</td>
             <td style="background-color: ${rgbColor}; color: ${rgbColor}; border: 1px solid #999;">
                 ${hatasSzoveg}
@@ -256,47 +214,31 @@ function renderReport(data, dateStr) {
     }
     
     showView('report-view');
-    
-    // VoiceOver segítése: fókusz az eredmény címére
-    setTimeout(() => {
-        document.getElementById('res-name').focus();
-    }, 500);
+    setTimeout(() => { document.getElementById('res-name').focus(); }, 300);
 }
 
 async function submitRegistration() {
     const name = document.getElementById('reg-name').value;
     if(!name) return alert("Név kitöltése kötelező!");
     
-    const body = { 
-        action: 'register', 
-        name: name, 
-        email: document.getElementById('reg-email').value 
-    };
-
-    // Az ékezetmentes ID-k alapján gyűjtjük össze az adatokat
-    PLANETS_CONFIG.forEach(p => {
-        body[p.id] = document.getElementById("reg-" + p.id).value;
-    });
+    const body = { action: 'register', name: name, email: document.getElementById('reg-email').value };
+    PLANETS_CONFIG.forEach(p => { body[p.id] = document.getElementById("reg-" + p.id).value; });
 
     try {
-        const resp = await fetch(SCRIPT_URL, { 
-            method: 'POST', 
-            mode: 'no-cors', // Ha szükséges a CORS hiba elkerüléséhez
-            body: JSON.stringify(body) 
-        });
-        
-        // Mivel a regisztráció után frissíteni kell a listát:
+        await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(body) });
         alert("Sikeres mentés!");
         location.reload(); 
-    } catch(e) { 
-        alert("Hiba a mentésnél: " + e.message); 
-    }
+    } catch(e) { alert("Hiba a mentésnél."); }
 }
+
 function showView(id) {
     document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
-    document.getElementById(id).classList.remove('hidden');
+    const target = document.getElementById(id);
+    target.classList.remove('hidden');
+    const header = target.querySelector('h1, h2');
+    if (header) header.focus();
     window.scrollTo(0,0);
 }
 </script>
 </body>
-</html>  
+</html>
