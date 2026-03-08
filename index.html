@@ -18,18 +18,34 @@
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
         th { background-color: #f4f4f4; }
+        .nav-bar { display: flex; justify-content: space-between; align-items: center; }
     </style>
 </head>
 <body>
 
 <div id="app">
-    <section id="home-view">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
+    <section id="loading-view">
+        <h1 tabindex="-1">Betöltés...</h1>
+    </section>
+
+    <section id="login-view" class="hidden">
+        <h2 tabindex="-1">Bejelentkezés</h2>
+        <input type="email" id="login-email" placeholder="E-mail cím" autocomplete="email">
+        <input type="password" id="login-password" placeholder="Jelszó">
+        <button class="btn-main" onclick="handleLogin()">Belépés</button>
+        <button class="btn-main" style="background-color:#eee; color:#333;" onclick="showView('reg-view')">Új szülő regisztrációja</button>
+    </section>
+
+    <section id="home-view" class="hidden">
+        <div class="nav-bar">
             <h1 tabindex="-1">AsztroApp</h1>
-            <button id="btn-to-reg" onclick="showView('reg-view')" aria-label="Új felhasználó hozzáadása" style="font-size: 24px; background:none; border:none;">👤+</button>
+            <div>
+                <button onclick="showView('reg-view')" aria-label="Új személy hozzáadása" style="font-size: 24px; background:none; border:none;">👤+</button>
+                <button onclick="logout()" aria-label="Kijelentkezés" style="font-size: 24px; background:none; border:none;">🚪</button>
+            </div>
         </div>
         
-        <label for="user-select">Felhasználó:</label>
+        <label for="user-select">Személy:</label>
         <select id="user-select"></select>
 
         <label for="date-select">Dátum:</label>
@@ -42,7 +58,7 @@
         <h2 id="res-name" tabindex="-1">Eredmény</h2>
         <input type="date" id="res-date-change" aria-label="Dátum módosítása és új lekérdezés">
         
-        <table id="result-table" aria-label="Asztrológiai jelentés">
+        <table id="result-table">
             <thead>
                 <tr>
                     <th scope="col">Bolygó</th>
@@ -56,13 +72,14 @@
     </section>
 
     <section id="reg-view" class="hidden">
-        <h2 tabindex="-1">Regisztráció</h2>
+        <h2 id="reg-title" tabindex="-1">Regisztráció</h2>
         <input type="text" id="reg-name" placeholder="Név (kötelező)" aria-required="true">
-        <input type="email" id="reg-email" placeholder="E-mail (nem kötelező)">
+        <input type="email" id="reg-email" placeholder="E-mail (Szülő esetén)">
+        <input type="password" id="reg-pass" placeholder="Jelszó (Szülő esetén)" class="parent-only">
         
         <div id="reg-planets"></div>
         <button class="btn-main" onclick="submitRegistration()">Mentés</button>
-        <button class="btn-main" style="background-color:#ccc; color:#000;" onclick="showView('home-view')">Mégse</button>
+        <button class="btn-main" style="background-color:#ccc; color:#000;" onclick="cancelRegistration()">Mégse</button>
     </section>
 </div>
 
@@ -70,86 +87,119 @@
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyIOCnWXRm2wkhybVuHx_NsFX5YspcyfuF0wGySv55315jGEIFb69KFyMls1WFtIM094w/exec";
     
 const PLANETS_CONFIG = [
-    { id: "nap", label: "Nap" },
-    { id: "asc", label: "ASC" },
-    { id: "hold", label: "Hold" },
-    { id: "merkur", label: "Merkúr" },
-    { id: "venusz", label: "Vénusz" },
-    { id: "mars", label: "Mars" }
+    { id: "nap", label: "Nap" }, { id: "asc", label: "ASC" }, { id: "hold", label: "Hold" },
+    { id: "merkur", label: "Merkúr" }, { id: "venusz", label: "Vénusz" }, { id: "mars", label: "Mars" }
 ];
 const ZODIACS = ["Kos", "Bika", "Ikrek", "Rák", "Oroszlán", "Szűz", "Mérleg", "Skorpió", "Nyilas", "Bak", "Vízöntő", "Halak"];
 
-let appData = { users: {}, minDate: "", maxDate: "", actualUser: "" };
+let appData = { users: {}, minDate: "", maxDate: "" };
+
+// Device ID kezelése
+let deviceID = localStorage.getItem('asztro_deviceID');
+if (!deviceID) {
+    deviceID = 'DEV-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+    localStorage.setItem('asztro_deviceID', deviceID);
+}
 
 window.onload = async () => {
     generateRegFields();
-    setupNavigation(); 
+    setupNavigation();
     document.getElementById('date-select').valueAsDate = new Date();
 
-    await loadInitialData();
-    
-    document.getElementById('res-date-change').addEventListener('change', function() {
-        if(confirm("Szeretne új lekérdezést a módosított dátummal?")) {
-            document.getElementById('date-select').value = this.value;
-            runQuery();
-        }
-    });
+    // Session ellenőrzés indításkor
+    const savedParentID = localStorage.getItem('asztro_parentID');
+    if (savedParentID) {
+        await checkSession(savedParentID);
+    } else {
+        // Ha nincs szülő, megnézzük van-e egyáltalán valaki a rendszerben
+        await loadInitialData(); 
+    }
 };
 
-function setupNavigation() {
-    const nameInput = document.getElementById('reg-name');
-    const emailInput = document.getElementById('reg-email');
-
-    nameInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            emailInput.focus();
+async function checkSession(pID) {
+    try {
+        const resp = await fetch(SCRIPT_URL, { 
+            method: 'POST', 
+            body: JSON.stringify({ action: 'checkSession', parentID: pID, deviceID: deviceID }) 
+        });
+        const res = await resp.json();
+        if (res.status === "SESSION_OK") {
+            appData.users = res.users;
+            updateHomeUI();
+            showView('home-view');
+        } else {
+            showView('login-view');
         }
-    });
-
-    emailInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            emailInput.blur(); 
-            const firstSelect = document.getElementById('reg-nap');
-            if (firstSelect) firstSelect.focus();
-        }
-    });
+    } catch(e) { showView('login-view'); }
 }
 
-function generateRegFields() {
-    const cont = document.getElementById('reg-planets');
-    cont.innerHTML = ""; 
-    PLANETS_CONFIG.forEach(p => {
-        const label = document.createElement('label');
-        label.setAttribute('for', "reg-" + p.id);
-        label.innerText = p.label + ":";
-        
-        const sel = document.createElement('select');
-        sel.id = "reg-" + p.id;
-        
-        ZODIACS.forEach(z => {
-            const opt = document.createElement('option');
-            opt.value = z;
-            opt.text = z;
-            sel.appendChild(opt);
+async function handleLogin() {
+    const email = document.getElementById('login-email').value;
+    const pass = document.getElementById('login-password').value;
+    if(!email || !pass) return alert("Email és jelszó szükséges!");
+
+    try {
+        const resp = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'login', email: email, password: pass, deviceID: deviceID })
         });
-        cont.appendChild(label);
-        cont.appendChild(sel);
-        cont.appendChild(document.createElement('br'));
-    });
+        const res = await resp.json();
+        if (res.status === "SUCCESS") {
+            localStorage.setItem('asztro_parentID', res.parentID);
+            appData.users = res.users;
+            updateHomeUI();
+            showView('home-view');
+        } else {
+            alert("Hiba: " + res.allapotjelzes);
+        }
+    } catch(e) { alert("Belépési hiba."); }
+}
+
+async function submitRegistration() {
+    const name = document.getElementById('reg-name').value;
+    const email = document.getElementById('reg-email').value;
+    const pass = document.getElementById('reg-pass').value;
+    const parentID = localStorage.getItem('asztro_parentID');
+
+    if(!name) return alert("Név kitöltése kötelező!");
+    
+    const body = { 
+        action: 'register', 
+        name: name, 
+        email: email, 
+        password: pass,
+        parentID: parentID || "", // Ha be van lépve, hozzáadjuk gyermekként
+        deviceID: deviceID 
+    };
+    
+    PLANETS_CONFIG.forEach(p => { body[p.id] = document.getElementById("reg-" + p.id).value; });
+
+    try {
+        const resp = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(body) });
+        const res = await resp.json();
+        if(res.status === "SUCCESS") {
+            alert("Sikeres mentés!");
+            if(!parentID) {
+                // Ha ez volt az első regisztráció (szülő), mentsük el
+                localStorage.setItem('asztro_parentID', res.userID);
+            }
+            location.reload();
+        }
+    } catch(e) { alert("Hiba a mentésnél."); }
 }
 
 async function loadInitialData() {
     try {
         const resp = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'load' }) });
         const res = await resp.json();
-        if(res.status === "SUCCESS") {
-            appData = res;
-            updateHomeUI();
-            if(!res.hasUsers) showView('reg-view');
+        appData.minDate = res.minDate;
+        appData.maxDate = res.maxDate;
+        if(!res.hasUsers) {
+            showView('reg-view');
+        } else {
+            showView('login-view');
         }
-    } catch(e) { console.error("Hiba:", e); }
+    } catch(e) { showView('login-view'); }
 }
 
 function updateHomeUI() {
@@ -159,7 +209,6 @@ function updateHomeUI() {
         let opt = document.createElement('option');
         opt.value = id;
         opt.text = appData.users[id];
-        if(id === appData.defaultUserID) opt.selected = true;
         sel.appendChild(opt);
     }
     const d = document.getElementById('date-select');
@@ -172,14 +221,10 @@ async function runQuery() {
     const dateVal = document.getElementById('date-select').value;
     if(!uid || !dateVal) return alert("Válassz felhasználót és dátumot!");
 
-    const dateObj = new Date(dateVal);
-    dateObj.setHours(0, 0, 0, 0);
-    const finalDate = dateObj.toISOString(); 
-
     try {
         const resp = await fetch(SCRIPT_URL, { 
             method: 'POST', 
-            body: JSON.stringify({ action: 'query', userID: uid, lekerdezettDatum: finalDate }) 
+            body: JSON.stringify({ action: 'query', userID: uid, lekerdezettDatum: dateVal }) 
         });
         const res = await resp.json();
         renderReport(res, dateVal);
@@ -187,48 +232,34 @@ async function runQuery() {
 }
 
 function renderReport(data, dateStr) {
-    document.getElementById('res-name').innerText = "Eredmény: " + (appData.users[data.userID] || "Ismeretlen");
+    document.getElementById('res-name').innerText = "Eredmény: " + (appData.users[data.userID] || "");
     document.getElementById('res-date-change').value = dateStr;
-    
     const tbody = document.getElementById('result-body');
     tbody.innerHTML = "";
 
     for(let i = 0; i < PLANETS_CONFIG.length; i++) {
         const base = i * 5;
-        const jegy = data.resultMatrix[base];
-        const hatasSzoveg = data.resultMatrix[base+1];
-        const r = data.resultMatrix[base+2];
-        const g = data.resultMatrix[base+3];
-        const b = data.resultMatrix[base+4];
-        const rgbColor = `rgb(${r},${g},${b})`;
-
-        // Visszaállítva a "szín a színben" megoldás a VoiceOver miatt
-        const row = `<tr>
+        const rgbColor = `rgb(${data.resultMatrix[base+2]},${data.resultMatrix[base+3]},${data.resultMatrix[base+4]})`;
+        tbody.innerHTML += `<tr>
             <th scope="row">${PLANETS_CONFIG[i].label}</th>
-            <td>${jegy}</td>
-            <td style="background-color: ${rgbColor}; color: ${rgbColor}; border: 1px solid #999;">
-                ${hatasSzoveg}
-            </td>
+            <td>${data.resultMatrix[base]}</td>
+            <td style="background-color: ${rgbColor}; color: ${rgbColor}; border: 1px solid #999;">${data.resultMatrix[base+1]}</td>
         </tr>`;
-        tbody.innerHTML += row;
     }
-    
     showView('report-view');
     setTimeout(() => { document.getElementById('res-name').focus(); }, 300);
 }
 
-async function submitRegistration() {
-    const name = document.getElementById('reg-name').value;
-    if(!name) return alert("Név kitöltése kötelező!");
-    
-    const body = { action: 'register', name: name, email: document.getElementById('reg-email').value };
-    PLANETS_CONFIG.forEach(p => { body[p.id] = document.getElementById("reg-" + p.id).value; });
+function logout() {
+    if(confirm("Biztosan kijelentkezik?")) {
+        localStorage.removeItem('asztro_parentID');
+        location.reload();
+    }
+}
 
-    try {
-        await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(body) });
-        alert("Sikeres mentés!");
-        location.reload(); 
-    } catch(e) { alert("Hiba a mentésnél."); }
+function cancelRegistration() {
+    if(localStorage.getItem('asztro_parentID')) showView('home-view');
+    else showView('login-view');
 }
 
 function showView(id) {
@@ -237,7 +268,37 @@ function showView(id) {
     target.classList.remove('hidden');
     const header = target.querySelector('h1, h2');
     if (header) header.focus();
-    window.scrollTo(0,0);
+    
+    // Regisztráció címének és mezőinek módosítása ha már van szülő
+    if(id === 'reg-view') {
+        const isChild = !!localStorage.getItem('asztro_parentID');
+        document.getElementById('reg-title').innerText = isChild ? "Új személy hozzáadása" : "Szülő regisztrációja";
+        document.querySelectorAll('.parent-only').forEach(el => el.style.display = isChild ? 'none' : 'block');
+    }
+}
+
+function generateRegFields() {
+    const cont = document.getElementById('reg-planets');
+    cont.innerHTML = ""; 
+    PLANETS_CONFIG.forEach(p => {
+        const lbl = document.createElement('label');
+        lbl.innerText = p.label + ":";
+        const sel = document.createElement('select');
+        sel.id = "reg-" + p.id;
+        ZODIACS.forEach(z => {
+            const opt = document.createElement('option');
+            opt.value = z; opt.text = z;
+            sel.appendChild(opt);
+        });
+        cont.appendChild(lbl);
+        cont.appendChild(sel);
+    });
+}
+
+function setupNavigation() {
+    const n = document.getElementById('reg-name'), e = document.getElementById('reg-email');
+    n.addEventListener('keydown', (ev) => { if(ev.key==='Enter'){ ev.preventDefault(); e.focus(); } });
+    e.addEventListener('keydown', (ev) => { if(ev.key==='Enter'){ ev.preventDefault(); document.getElementById('reg-pass').focus(); } });
 }
 </script>
 </body>
