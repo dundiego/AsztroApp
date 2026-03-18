@@ -215,8 +215,116 @@ function generateRegFields() {
         cont.appendChild(wrap);
     });
 }
-// Alapértelmezett hívások
-window.onload = () => { generateRegFields(); showView('loading-view'); /* ... többi init kód ... */ };
-</script>
+// --- HÁLÓZATI FÜGGVÉNYEK ---
+
+async function loadInitialData() {
+    try {
+        console.log("Kezdeti adatok lekérése...");
+        const resp = await fetch(SCRIPT_URL, { 
+            method: 'POST', 
+            body: JSON.stringify({ action: 'load' }) 
+        });
+        const res = await resp.json();
+        
+        if (res.status === "SUCCESS") {
+            appData.minDate = res.minDate;
+            appData.maxDate = res.maxDate;
+            
+            if (!res.hasUsers) {
+                // Ha még nincs senki a táblázatban, regisztráció jön
+                showView('reg-view');
+            } else {
+                // Ha már vannak userek, belépés jön
+                showView('login-view');
+            }
+        }
+    } catch (e) {
+        console.error("Betöltési hiba:", e);
+        announce("Hiba a hálózati kapcsolatban.");
+        alert("Nem sikerült elérni a szervert.");
+    }
+}
+
+async function checkSession(pID) {
+    try {
+        const resp = await fetch(SCRIPT_URL, { 
+            method: 'POST', 
+            body: JSON.stringify({ 
+                action: 'checkSession', 
+                parentID: pID, 
+                deviceID: deviceID 
+            }) 
+        });
+        const res = await resp.json();
+        if (res.status === "SESSION_OK") {
+            appData.users = res.users;
+            updateHomeUI();
+            showView('home-view');
+        } else {
+            showView('login-view');
+        }
+    } catch(e) { 
+        showView('login-view'); 
+    }
+}
+
+async function handleLogin() {
+    const email = document.getElementById('login-email').value;
+    const pass = document.getElementById('login-password').value;
+    if(!email || !pass) return alert("Email és jelszó szükséges!");
+
+    try {
+        const resp = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({ 
+                action: 'login', 
+                email: email, 
+                password: pass, 
+                deviceID: deviceID 
+            })
+        });
+        const res = await resp.json();
+        if (res.status === "SUCCESS") {
+            localStorage.setItem('asztro_parentID', res.parentID);
+            appData.users = res.users;
+            updateHomeUI();
+            showView('home-view');
+        } else {
+            alert("Hiba: " + res.allapotjelzes);
+        }
+    } catch(e) { 
+        alert("Belépési hiba."); 
+    }
+}
+
+function updateHomeUI() {
+    const sel = document.getElementById('user-select');
+    sel.innerHTML = "";
+    for(let id in appData.users) {
+        let opt = document.createElement('option');
+        opt.value = id;
+        opt.text = appData.users[id];
+        sel.appendChild(opt);
+    }
+    const d = document.getElementById('date-select');
+    d.valueAsDate = new Date(); // Mai nap alapértelmezettnek
+}
+
+// --- JAVÍTOTT ONLOAD RÉSZ ---
+
+window.onload = async () => {
+    generateRegFields();
+    setupNavigation();
+    
+    const savedParentID = localStorage.getItem('asztro_parentID');
+    
+    if (savedParentID) {
+        // Ha van elmentett ID, ellenőrizzük a 96 órát
+        await checkSession(savedParentID);
+    } else {
+        // Ha nincs, megnézzük kell-e regisztráció vagy belépés
+        await loadInitialData();
+    }
+};</script>
 </body>
 </html>
