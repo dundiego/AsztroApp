@@ -19,6 +19,8 @@
         .nav-bar { display: flex; justify-content: space-between; align-items: center; text-align: left; }
         .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
         label { display: block; text-align: left; margin-top: 10px; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border-bottom: 1px solid #ddd; padding: 12px 8px; text-align: left; }
     </style>
 </head>
 <body>
@@ -48,31 +50,46 @@
             </div>
         </div>
         
-        <label for="user-select">Választott személy:</label>
-        <select id="user-select"></select>
+        <div id="query-form">
+            <label for="user-select">Választott személy:</label>
+            <select id="user-select"></select>
 
-        <label for="date-select">Lekérdezés dátuma:</label>
-        <input type="date" id="date-select">
+            <label for="date-select">Lekérdezés dátuma:</label>
+            <input type="date" id="date-select">
+            <span id="date-range-hint" class="hint"></span>
 
-        <button class="btn-main" onclick="runQuery()">Adatok lekérése</button>
+            <button class="btn-main" onclick="runQuery()">Adatok lekérése</button>
+        </div>
+
+        <div id="query-results" class="hidden">
+            <h2 id="results-title" tabindex="-1">Eredmények</h2>
+            <table>
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--primary-blue);">
+                        <th>Bolygó</th>
+                        <th>Jegy</th>
+                        <th>Szín/Hatás</th>
+                    </tr>
+                </thead>
+                <tbody id="results-body"></tbody>
+            </table>
+            <button class="btn-main" style="margin-top:20px; background-color:#666;" onclick="resetQuery()">Új lekérdezés</button>
+        </div>
     </section>
 
     <section id="reg-view" class="hidden">
         <h2 id="reg-title" tabindex="-1">Regisztráció</h2>
-        
         <label for="reg-name">Név (kötelező):</label>
         <input type="text" id="reg-name" placeholder="Példa János" aria-required="true">
         
-        <div id="reg-auth-fields" class="parent-only">
+        <div id="reg-auth-fields">
             <label for="reg-email">E-mail cím:</label>
             <input type="email" id="reg-email" readonly style="background-color: #eee;">
-
             <label for="reg-pass">Jelszó:</label>
             <input type="password" id="reg-pass" readonly style="background-color: #eee;">
         </div>
         
         <div id="reg-planets"></div>
-        
         <button id="btn-save" class="btn-main" onclick="submitRegistration()">Mentés</button>
         <button class="btn-main" style="background-color:#ccc; color:#000;" onclick="cancelRegistration()">Mégse</button>
     </section>
@@ -91,17 +108,12 @@ let deviceID = localStorage.getItem('asztro_deviceID') || 'DEV-' + Math.random()
 localStorage.setItem('asztro_deviceID', deviceID);
 
 function announce(msg) { document.getElementById('announcer').innerText = msg; }
+function formatDate(dateStr) { return dateStr ? new Date(dateStr).toISOString().split('T')[0] : ""; }
 
-function validateEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
-function validatePassword(pass) { return pass.length >= 6; }
-
-// Kombinált Belépés / Regisztráció választó
 async function handleAuth() {
     const email = document.getElementById('login-email').value.trim();
     const pass = document.getElementById('login-password').value.trim();
-
-    if(!validateEmail(email)) return alert("Érvényt email cím szükséges!");
-    if(!validatePassword(pass)) return alert("A jelszónak legalább 6 karakternek kell lennie!");
+    if(!email || pass.length < 6) return alert("Helytelen adatok!");
 
     try {
         announce("Ellenőrzés...");
@@ -117,66 +129,55 @@ async function handleAuth() {
             updateHomeUI();
             showView('home-view');
         } else if (res.allapotjelzes === "USER_NOT_FOUND") {
-            // Ha nincs ilyen user, átvisszük a regisztrációra
             document.getElementById('reg-email').value = email;
             document.getElementById('reg-pass').value = pass;
             showView('reg-view');
-            announce("Új felhasználó. Kérjük adja meg a nevét és a bolygóit.");
-        } else {
-            alert("Hiba: " + res.allapotjelzes);
-        }
+        } else { alert("Hiba: " + res.allapotjelzes); }
     } catch(e) { alert("Hiba a kapcsolódás során."); }
 }
 
-async function submitRegistration() {
-    const name = document.getElementById('reg-name').value.trim();
-    const email = document.getElementById('reg-email').value;
-    const pass = document.getElementById('reg-pass').value;
-    const parentID = localStorage.getItem('asztro_parentID');
-
-    if(!name) return alert("Név kötelező!");
-
-    const body = { 
-        action: 'register', 
-        name: name, email: email, password: pass,
-        parentID: parentID || "", 
-        deviceID: deviceID 
-    };
-    PLANETS_CONFIG.forEach(p => { body[p.id] = document.getElementById("reg-" + p.id).value; });
+async function runQuery() {
+    const userId = document.getElementById('user-select').value;
+    const date = document.getElementById('date-select').value;
+    if(!date) return alert("Válassz dátumot!");
 
     try {
-        const resp = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(body) });
+        announce("Lekérdezés...");
+        const resp = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({ 
+                action: 'query', 
+                userID: userId, 
+                lekerdezettDatum: date, 
+                parentID: localStorage.getItem('asztro_parentID'),
+                deviceID: deviceID 
+            })
+        });
         const res = await resp.json();
+
         if(res.status === "SUCCESS") {
-            if(!parentID) localStorage.setItem('asztro_parentID', res.userID);
-            location.reload();
-        }
-    } catch(e) { alert("Hiba a mentésnél."); }
+            const tbody = document.getElementById('results-body');
+            tbody.innerHTML = "";
+            const m = res.resultMatrix;
+            
+            for(let i=0; i < m.length; i+=5) {
+                const label = PLANETS_CONFIG[i/5].label;
+                const rgb = `rgb(${m[i+2]},${m[i+3]},${m[i+4]})`;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${label}</td><td>${m[i]}</td><td style="background:${rgb};color:${rgb};">${m[i+1]}</td>`;
+                tbody.appendChild(tr);
+            }
+            document.getElementById('query-form').classList.add('hidden');
+            document.getElementById('query-results').classList.remove('hidden');
+            document.getElementById('results-title').focus();
+            announce("Adatok betöltve.");
+        } else { alert("Hiba: " + res.status); }
+    } catch(e) { alert("Szerver hiba."); }
 }
 
-function prepareNewChild() {
-    document.getElementById('reg-name').value = "";
-    showView('reg-view');
-}
-
-function cancelRegistration() {
-    const pID = localStorage.getItem('asztro_parentID');
-    showView(pID ? 'home-view' : 'login-view');
-}
-
-function showView(id) {
-    document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
-    const target = document.getElementById(id);
-    target.classList.remove('hidden');
-    
-    if(id === 'reg-view') {
-        const isChild = !!localStorage.getItem('asztro_parentID');
-        document.getElementById('reg-title').innerText = isChild ? "Új személy hozzáadása" : "Regisztráció";
-        document.getElementById('reg-auth-fields').style.display = isChild ? 'none' : 'block';
-        setupNavigation();
-    }
-    const header = target.querySelector('h1, h2');
-    if (header) header.focus();
+function resetQuery() {
+    document.getElementById('query-results').classList.add('hidden');
+    document.getElementById('query-form').classList.remove('hidden');
 }
 
 function updateHomeUI() {
@@ -187,7 +188,13 @@ function updateHomeUI() {
         opt.value = id; opt.text = appData.users[id];
         sel.appendChild(opt);
     }
-    document.getElementById('date-select').valueAsDate = new Date();
+    const dInput = document.getElementById('date-select');
+    dInput.valueAsDate = new Date();
+    if(appData.minDate) {
+        dInput.min = formatDate(appData.minDate);
+        dInput.max = formatDate(appData.maxDate);
+        document.getElementById('date-range-hint').innerText = `Tartomány: ${dInput.min} - ${dInput.max}`;
+    }
 }
 
 async function loadInitialData() {
@@ -217,6 +224,19 @@ async function checkSession(pID) {
     } catch(e) { showView('login-view'); }
 }
 
+function showView(id) {
+    document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+    const target = document.getElementById(id);
+    target.classList.remove('hidden');
+    if(id === 'reg-view') {
+        const isChild = !!localStorage.getItem('asztro_parentID');
+        document.getElementById('reg-auth-fields').classList.toggle('hidden', isChild);
+        setupNavigation();
+    }
+    const h = target.querySelector('h1, h2');
+    if (h) h.focus();
+}
+
 function generateRegFields() {
     const cont = document.getElementById('reg-planets');
     cont.innerHTML = ""; 
@@ -237,18 +257,13 @@ function generateRegFields() {
 
 function setupNavigation() {
     const nameField = document.getElementById('reg-name');
-    const saveBtn = document.getElementById('btn-save');
     nameField.addEventListener('keydown', (e) => { 
         if(e.key==='Enter'){ e.preventDefault(); document.getElementById("reg-nap").focus(); } 
-    });
-    const lastPlanet = "reg-" + PLANETS_CONFIG[PLANETS_CONFIG.length - 1].id;
-    document.getElementById(lastPlanet).addEventListener('change', () => {
-        setTimeout(() => saveBtn.focus(), 100);
     });
 }
 
 async function logout() {
-    if(confirm("Biztosan kijelentkezik?")) {
+    if(confirm("Kijelentkezés?")) {
         const pID = localStorage.getItem('asztro_parentID');
         await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'logout', parentID: pID }) });
         localStorage.removeItem('asztro_parentID');
@@ -258,12 +273,8 @@ async function logout() {
 
 window.onload = async () => {
     generateRegFields();
-    const savedParentID = localStorage.getItem('asztro_parentID');
-    if (savedParentID) {
-        await checkSession(savedParentID);
-    } else {
-        await loadInitialData();
-    }
+    const pID = localStorage.getItem('asztro_parentID');
+    if (pID) await checkSession(pID); else await loadInitialData();
 };
 </script>
 </body>
