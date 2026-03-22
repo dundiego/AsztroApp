@@ -74,16 +74,90 @@
         <button id="btn-save" class="btn-main" onclick="submitRegistration()">Mentés</button>
         <button class="btn-vissza" onclick="cancelRegistration()">Mégsem</button>
     </section>
+
+<section id="delete-view" class="hidden">
+    <h2 id="delete-title" tabindex="-1">Profilkezelés - Törlés</h2>
+    <label for="delete-user-select">Törlendő személy kiválasztása:</label>
+    <select id="delete-user-select"></select>
+
+    <button class="btn-main" onclick="confirmDelete()">Törlés</button>
+    <button class="btn-vissza" onclick="cancelRegistration()">Vissza</button>
+</section>
+
 </div>
 
-<script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzzWggy2aybBEsksC8ueMBy8rvA7H1p0dzlt2pYV5VBc_n3zpKtMtqLFHgBFiV5DVRXdA/exec";
+<script>z
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz8X-dS12AxUdcGvav27aOS4vNKBvnsnmmBp9HGWIIwY9Y7YfEIWSU4zEEaybDcDU4_yg/exec";
 const PLANETS_CONFIG = [{id:"nap", label:"Nap"}, {id:"asc", label:"ASC"}, {id:"hold", label:"Hold"}, {id:"merkur", label:"Merkúr"}, {id:"venusz", label:"Vénusz"}, {id:"mars", label:"Mars"}];
 const ZODIACS = ["Kos", "Bika", "Ikrek", "Rák", "Oroszlán", "Szűz", "Mérleg", "Skorpió", "Nyilas", "Bak", "Vízöntő", "Halak"];
 
 let appData = { users: {}, currentEditID: null };
 let deviceID = localStorage.getItem('asztro_deviceID') || 'DEV-' + Math.random().toString(36).substr(2, 9).toUpperCase();
 localStorage.setItem('asztro_deviceID', deviceID);
+
+// Törlési ablak megnyitása
+function openDeleteView() {
+    const mainSelect = document.getElementById('user-select');
+    const deleteSelect = document.getElementById('delete-user-select');
+    
+    // Átmásoljuk a neveket a törlési listába
+    deleteSelect.innerHTML = mainSelect.innerHTML;
+    deleteSelect.value = mainSelect.value;
+    
+    showView('delete-view');
+    announce("Profilkezelés, törlés nézet. Válassza ki a törlendő nevet.");
+}
+
+// Megerősítés és törlés indítása
+async function confirmDelete() {
+    const sel = document.getElementById('delete-user-select');
+    const userID = sel.value;
+    const userName = sel.options[sel.selectedIndex].text;
+    const parentID = localStorage.getItem('asztro_parentID');
+
+    // 4. pont: Megerősítés kérése
+    if (confirm(`Biztosan törölni szeretnéd a(z) ${userName} nevet és összes adatát?`)) {
+        try {
+            announce("Törlés folyamatban...");
+            const resp = await fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({
+                    action: 'delete',
+                    userID: userID,
+                    parentID: parentID,
+                    deviceID: deviceID
+                })
+            });
+            const res = await resp.json();
+
+            if (res.status === "SUCCESS") {
+                appData.users = res.users;
+                updateHomeUI();
+                alert("Sikeres törlés.");
+
+                // 2. pont: Ha nem maradt profil, irány az új személy hozzáadása
+                if (res.isEmpty || Object.keys(res.users).length === 0) {
+                    prepareNewChild();
+                } else {
+                    showView('home-view');
+                }
+            } else {
+                alert(res.allapotjelzes); // Itt jelzi, ha email-es profilról van szó
+                showView('home-view');
+            }
+        } catch (e) {
+            alert("Hiba történt a törlés során.");
+        }
+    } else {
+        // Ha "Nem"-et nyom, visszalépés a kezdőképernyőre
+        showView('home-view');
+    }
+}
+
+// A menüben lévő gomb hívja ezt
+function deleteProfile() {
+    openDeleteView();
+}
 
 function toggleMenu() { document.getElementById("profile-menu").classList.toggle("show"); }
 
