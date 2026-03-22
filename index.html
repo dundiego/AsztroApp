@@ -17,6 +17,8 @@
         .menu-content button { color: black; padding: 12px 16px; text-decoration: none; display: block; border: none; width: 100%; text-align: left; background: none; cursor: pointer; border-bottom: 1px solid #ddd; }
         .show { display: block; }
         .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border-bottom: 1px solid #ddd; padding: 12px 8px; text-align: left; }
     </style>
 </head>
 <body>
@@ -24,7 +26,16 @@
 <div id="app">
     <div id="announcer" class="sr-only" aria-live="assertive"></div>
 
-    <section id="loading-view"><h1>Betöltés...</h1></section>
+    <section id="loading-view">
+        <h1 tabindex="-1">Betöltés...</h1>
+    </section>
+
+    <section id="login-view" class="hidden">
+        <h2 tabindex="-1">Bejelentkezés</h2>
+        <input type="email" id="login-email" placeholder="E-mail cím">
+        <input type="password" id="login-password" placeholder="Jelszó">
+        <button class="btn-main" onclick="handleAuth()">Indítás</button>
+    </section>
 
     <section id="home-view" class="hidden">
         <div class="nav-bar">
@@ -53,7 +64,13 @@
         </div>
 
         <div id="query-results" class="hidden">
-            <table id="results-table" style="width: 100%; margin-top: 20px;">
+            <table>
+                <thead>
+                    <tr>
+                        <th id="first-cell" tabindex="-1">Bolygó és Jegy</th>
+                        <th>Hatás</th>
+                    </tr>
+                </thead>
                 <tbody id="results-body"></tbody>
             </table>
         </div>
@@ -75,168 +92,158 @@
         <button class="btn-vissza" onclick="cancelRegistration()">Mégsem</button>
     </section>
 
-<section id="delete-view" class="hidden">
-    <h2 id="delete-title" tabindex="-1">Profilkezelés - Törlés</h2>
-    <label for="delete-user-select">Törlendő személy kiválasztása:</label>
-    <select id="delete-user-select"></select>
+    <section id="delete-view" class="hidden">
+        <h2 id="delete-title" tabindex="-1">Profilkezelés - Törlés</h2>
+        <label for="delete-user-select">Törlendő személy kiválasztása:</label>
+        <select id="delete-user-select"></select>
 
-    <button class="btn-main" onclick="confirmDelete()">Törlés</button>
-    <button class="btn-vissza" onclick="cancelRegistration()">Vissza</button>
-</section>
-
+        <button class="btn-main" onclick="confirmDelete()">Törlés</button>
+        <button class="btn-vissza" onclick="cancelRegistration()">Vissza</button>
+    </section>
 </div>
 
-<script>z
+<script>
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz8X-dS12AxUdcGvav27aOS4vNKBvnsnmmBp9HGWIIwY9Y7YfEIWSU4zEEaybDcDU4_yg/exec";
 const PLANETS_CONFIG = [{id:"nap", label:"Nap"}, {id:"asc", label:"ASC"}, {id:"hold", label:"Hold"}, {id:"merkur", label:"Merkúr"}, {id:"venusz", label:"Vénusz"}, {id:"mars", label:"Mars"}];
 const ZODIACS = ["Kos", "Bika", "Ikrek", "Rák", "Oroszlán", "Szűz", "Mérleg", "Skorpió", "Nyilas", "Bak", "Vízöntő", "Halak"];
 
-let appData = { users: {}, currentEditID: null };
+let appData = { users: {}, currentEditID: null, minDate: "", maxDate: "" };
 let deviceID = localStorage.getItem('asztro_deviceID') || 'DEV-' + Math.random().toString(36).substr(2, 9).toUpperCase();
 localStorage.setItem('asztro_deviceID', deviceID);
 
-// Törlési ablak megnyitása
-function openDeleteView() {
-    const mainSelect = document.getElementById('user-select');
-    const deleteSelect = document.getElementById('delete-user-select');
-    
-    // Átmásoljuk a neveket a törlési listába
-    deleteSelect.innerHTML = mainSelect.innerHTML;
-    deleteSelect.value = mainSelect.value;
-    
-    showView('delete-view');
-    announce("Profilkezelés, törlés nézet. Válassza ki a törlendő nevet.");
+function announce(msg) { document.getElementById('announcer').innerText = msg; }
+
+function showView(id) {
+    document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+    const target = document.getElementById(id);
+    target.classList.remove('hidden');
+    const h = target.querySelector('h1, h2');
+    if (h) h.focus();
+    document.getElementById("profile-menu").classList.remove("show");
 }
 
-// Megerősítés és törlés indítása
-async function confirmDelete() {
-    const sel = document.getElementById('delete-user-select');
-    const userID = sel.value;
-    const userName = sel.options[sel.selectedIndex].text;
-    const parentID = localStorage.getItem('asztro_parentID');
+async function handleAuth() {
+    const email = document.getElementById('login-email').value.trim();
+    const pass = document.getElementById('login-password').value.trim();
+    if(!email || !pass) return alert("Kérlek töltsd ki az adatokat!");
+    try {
+        announce("Bejelentkezés...");
+        const resp = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'login', email: email, password: pass, deviceID: deviceID })
+        });
+        const res = await resp.json();
+        if (res.status === "SUCCESS") {
+            localStorage.setItem('asztro_parentID', res.parentID);
+            appData.users = res.users;
+            updateHomeUI();
+            showView('home-view');
+        } else if (res.allapotjelzes === "USER_NOT_FOUND") {
+            document.getElementById('reg-email').value = email;
+            document.getElementById('reg-pass').value = pass;
+            showView('reg-view');
+        } else { alert("Hiba: " + res.allapotjelzes); }
+    } catch(e) { alert("Hiba a kapcsolódás során."); }
+}
 
-    // 4. pont: Megerősítés kérése
-    if (confirm(`Biztosan törölni szeretnéd a(z) ${userName} nevet és összes adatát?`)) {
-        try {
-            announce("Törlés folyamatban...");
-            const resp = await fetch(SCRIPT_URL, {
-                method: 'POST',
-                body: JSON.stringify({
-                    action: 'delete',
-                    userID: userID,
-                    parentID: parentID,
-                    deviceID: deviceID
-                })
-            });
-            const res = await resp.json();
-
-            if (res.status === "SUCCESS") {
-                appData.users = res.users;
-                updateHomeUI();
-                alert("Sikeres törlés.");
-
-                // 2. pont: Ha nem maradt profil, irány az új személy hozzáadása
-                if (res.isEmpty || Object.keys(res.users).length === 0) {
-                    prepareNewChild();
-                } else {
-                    showView('home-view');
-                }
-            } else {
-                alert(res.allapotjelzes); // Itt jelzi, ha email-es profilról van szó
-                showView('home-view');
+async function runQuery() {
+    const userId = document.getElementById('user-select').value;
+    const date = document.getElementById('date-select').value;
+    if(!date) return alert("Válassz dátumot!");
+    try {
+        announce("Lekérdezés...");
+        const resp = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'query', userID: userId, lekerdezettDatum: date, parentID: localStorage.getItem('asztro_parentID'), deviceID: deviceID })
+        });
+        const res = await resp.json();
+        if(res.status === "SUCCESS") {
+            const tbody = document.getElementById('results-body');
+            tbody.innerHTML = "";
+            const m = res.resultMatrix;
+            for(let i=0; i < m.length; i+=5) {
+                const tr = document.createElement('tr');
+                const rgb = `rgb(${m[i+2]},${m[i+3]},${m[i+4]})`;
+                tr.innerHTML = `<td><strong>${PLANETS_CONFIG[i/5].label}:</strong> ${m[i]}</td><td style="background:${rgb};color:${rgb};border:1px solid #ccc;">${m[i+1]}</td>`;
+                tbody.appendChild(tr);
             }
-        } catch (e) {
-            alert("Hiba történt a törlés során.");
+            document.getElementById('query-results').classList.remove('hidden');
+            setTimeout(() => { document.getElementById('first-cell').focus(); }, 100);
         }
-    } else {
-        // Ha "Nem"-et nyom, visszalépés a kezdőképernyőre
-        showView('home-view');
-    }
+    } catch(e) { alert("Szerver hiba."); }
 }
 
-// A menüben lévő gomb hívja ezt
-function deleteProfile() {
-    openDeleteView();
+async function loadInitialData() {
+    try {
+        const resp = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'load' }) });
+        const res = await resp.json();
+        if (res.status === "SUCCESS") {
+            appData.minDate = res.minDate;
+            appData.maxDate = res.maxDate;
+            showView('login-view');
+        }
+    } catch (e) { showView('login-view'); }
 }
 
-function toggleMenu() { document.getElementById("profile-menu").classList.toggle("show"); }
+async function checkSession(pID) {
+    try {
+        const resp = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'checkSession', parentID: pID, deviceID: deviceID }) });
+        const res = await resp.json();
+        if (res.status === "SESSION_OK") {
+            appData.users = res.users;
+            updateHomeUI();
+            showView('home-view');
+        } else { showView('login-view'); }
+    } catch(e) { showView('login-view'); }
+}
 
-// 3.1 Név szerkesztése prompt
-function editNamePrompt() {
+function updateHomeUI() {
     const sel = document.getElementById('user-select');
-    const oldName = sel.options[sel.selectedIndex].text;
-    const newName = prompt("Név módosítása:", oldName);
-    
-    if (newName && newName.trim() !== "" && newName !== oldName) {
-        // Átváltunk módosítás nézetre a megadott névvel
-        editCurrentProfile(newName.trim());
+    sel.innerHTML = "";
+    for(let id in appData.users) {
+        let opt = document.createElement('option');
+        opt.value = id; opt.text = appData.users[id];
+        sel.appendChild(opt);
     }
+    const dInput = document.getElementById('date-select');
+    dInput.valueAsDate = new Date();
 }
 
-function editCurrentProfile(temporaryName) {
-    const userID = document.getElementById('user-select').value;
-    appData.currentEditID = userID;
-    const currentName = temporaryName || document.getElementById('user-select').options[document.getElementById('user-select').selectedIndex].text;
-    
-    document.getElementById('reg-title').innerText = "Profil módosítása";
-    document.getElementById('reg-name').value = currentName;
-    document.getElementById('reg-auth-fields').classList.add('hidden');
-    
-    // Itt tölthetnénk be a jelenlegi bolygókat a backendtől (query-ből vagy appData-ból ha tároljuk)
-    // Most a választók alaphelyzetbe állnak, de a cél a userID szerinti módosítás
-    showView('reg-view');
-    setTimeout(() => {
-        document.getElementById('reg-name').focus();
-    }, 200);
-}
+function handleUserChange() { document.getElementById('date-select').focus(); }
+function handleDateChange() { document.getElementById('btn-run-query').focus(); }
+function toggleMenu() { document.getElementById("profile-menu").classList.toggle("show"); }
+function cancelRegistration() { showView('home-view'); }
 
 function prepareNewChild() {
     appData.currentEditID = null;
     document.getElementById('reg-title').innerText = "Új személy hozzáadása";
     document.getElementById('reg-name').value = "";
-    document.getElementById('reg-auth-fields').classList.add('hidden');
     showView('reg-view');
 }
 
-async function submitRegistration() {
-    const name = document.getElementById('reg-name').value.trim();
-    const action = appData.currentEditID ? 'update' : 'register';
-    const parentID = localStorage.getItem('asztro_parentID');
-
-    const body = {
-        action: action,
-        name: name,
-        parentID: parentID,
-        userID: appData.currentEditID,
-        deviceID: deviceID
-    };
-    PLANETS_CONFIG.forEach(p => { body[p.id] = document.getElementById("reg-" + p.id).value; });
-
-    try {
-        announce("Mentés...");
-        const resp = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(body) });
-        const res = await resp.json();
-        
-        if (res.status === "SUCCESS") {
-            appData.users = res.users;
-            updateHomeUI();
-            showView('home-view');
-            alert("Sikeres mentés!");
-        } else {
-            alert(res.allapotjelzes); // Itt jön a "Név létezik" hiba
-            document.getElementById('reg-name').focus();
-        }
-    } catch(e) { alert("Hiba a mentés során."); }
+function editCurrentProfile() {
+    const userID = document.getElementById('user-select').value;
+    appData.currentEditID = userID;
+    document.getElementById('reg-title').innerText = "Profil módosítása";
+    document.getElementById('reg-name').value = document.getElementById('user-select').options[document.getElementById('user-select').selectedIndex].text;
+    showView('reg-view');
 }
 
-function cancelRegistration() {
-    showView('home-view');
+function openDeleteView() {
+    const mainSelect = document.getElementById('user-select');
+    const deleteSelect = document.getElementById('delete-user-select');
+    deleteSelect.innerHTML = mainSelect.innerHTML;
+    deleteSelect.value = mainSelect.value;
+    showView('delete-view');
 }
 
-function showView(id) {
-    document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
-    document.getElementById(id).classList.remove('hidden');
-    document.getElementById("profile-menu").classList.remove("show");
+function deleteProfile() { openDeleteView(); }
+
+async function logout() {
+    const pID = localStorage.getItem('asztro_parentID');
+    await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'logout', parentID: pID }) });
+    localStorage.removeItem('asztro_parentID');
+    location.reload();
 }
 
 function generateRegFields() {
@@ -252,40 +259,22 @@ function generateRegFields() {
             opt.value = z; opt.text = z;
             sel.appendChild(opt);
         });
-        
-        // Fókuszkezelés: Enter vagy kiválasztás után ugrás (3.1 pont)
         sel.onchange = () => {
             const nextIdx = index + 1;
-            if (nextIdx < PLANETS_CONFIG.length) {
-                document.getElementById("reg-" + PLANETS_CONFIG[nextIdx].id).focus();
-            } else {
-                document.getElementById("btn-save").focus();
-            }
+            if (nextIdx < PLANETS_CONFIG.length) { document.getElementById("reg-" + PLANETS_CONFIG[nextIdx].id).focus(); }
+            else { document.getElementById("btn-save").focus(); }
         };
-        
         wrap.appendChild(sel);
         cont.appendChild(wrap);
     });
 }
 
-function updateHomeUI() {
-    const sel = document.getElementById('user-select');
-    sel.innerHTML = "";
-    for(let id in appData.users) {
-        let opt = document.createElement('option');
-        opt.value = id; opt.text = appData.users[id];
-        sel.appendChild(opt);
-    }
-}
-
-// ... (többi korábbi függvény: handleAuth, runQuery, loadInitialData stb.) ...
-
-window.onload = () => {
+window.onload = async () => {
     generateRegFields();
-    // Itt hívjuk a checkSession-t vagy load-ot
+    const pID = localStorage.getItem('asztro_parentID');
+    if (pID) await checkSession(pID); 
+    else await loadInitialData();
 };
-
-function announce(msg) { document.getElementById('announcer').innerText = msg; }
 </script>
 </body>
 </html>
