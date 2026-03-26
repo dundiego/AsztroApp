@@ -3,22 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AsztroApp</title>
+    <title>AsztroApp v4.5</title>
     <style>
-        :root { --primary-blue: #00008b; --white: #ffffff; --vissza-bg: rgb(252, 224, 98); }
-        body { font-family: -apple-system, sans-serif; margin: 0; padding: 15px; color: #333; text-align: center; }
-        .hidden { display: none; }
-        .btn-main { background-color: var(--primary-blue); color: var(--white); padding: 12px; border: none; border-radius: 8px; width: 100%; font-size: 16px; margin-top: 10px; cursor: pointer; }
-        .btn-vissza { background-color: var(--vissza-bg); color: black; padding: 12px; border: none; border-radius: 8px; width: 100%; font-size: 16px; margin-top: 10px; cursor: pointer; }
-        select, input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
-        .nav-bar { display: flex; justify-content: space-between; align-items: center; }
-        .menu-container { position: relative; display: inline-block; }
-        .menu-content { display: none; position: absolute; right: 0; background-color: #f9f9f9; min-width: 160px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); z-index: 100; border-radius: 8px; }
-        .menu-content button { color: black; padding: 12px 16px; text-decoration: none; display: block; border: none; width: 100%; text-align: left; background: none; cursor: pointer; border-bottom: 1px solid #ddd; }
+        :root { 
+            --primary-blue: #00008b; 
+            --white: #ffffff; 
+            --vissza-bg: #f1f3f4; 
+            --accent-yellow: #fce062;
+            --border-color: #dadce0;
+        }
+
+        body { 
+            font-family: -apple-system, system-ui, sans-serif; 
+            margin: 0; 
+            padding: 15px; 
+            color: #202124; 
+            background-color: #f8f9fa;
+        }
+
+        section {
+            max-width: 600px;
+            margin: 0 auto;
+            background: var(--white);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+        }
+
+        .btn-main, .btn-vissza {
+            width: 85%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            display: block;
+            margin: 15px auto;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-main { background-color: var(--primary-blue); color: var(--white); }
+        .btn-vissza { background-color: var(--vissza-bg); color: #3c4043; border: 1px solid var(--border-color); }
+        
+        .btn-main:focus, .btn-vissza:focus, select:focus, input:focus {
+            outline: 3px solid #8ab4f8;
+            outline-offset: 2px;
+        }
+
+        select, input { 
+            width: 85%; 
+            padding: 12px; 
+            margin: 10px auto; 
+            display: block; 
+            border: 1px solid var(--border-color); 
+            border-radius: 8px; 
+            font-size: 16px; 
+        }
+
+        .nav-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .menu-container { position: relative; }
+        .menu-content { 
+            display: none; 
+            position: absolute; 
+            right: 0; 
+            background-color: white; 
+            min-width: 180px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
+            z-index: 100; 
+            border-radius: 8px; 
+            overflow: hidden;
+        }
+        .menu-content button { 
+            padding: 15px; 
+            border: none; 
+            width: 100%; 
+            text-align: left; 
+            background: none; 
+            cursor: pointer; 
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
         .show { display: block; }
+
+        table { width: 100%; border-collapse: separate; border-spacing: 0 8px; margin-top: 20px; }
+        th { padding: 12px 8px; text-align: left; font-size: 11px; color: #5f6368; text-transform: uppercase; }
+        td { background: white; padding: 12px 8px; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
+        td:first-child { border-left: 1px solid #eee; border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+        td:last-child { border-right: 1px solid #eee; border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+
+        .effect-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 13px;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+
         .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border-bottom: 1px solid #ddd; padding: 12px 8px; text-align: left; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
@@ -34,41 +118,41 @@
         <h2 tabindex="-1">Bejelentkezés</h2>
         <input type="email" id="login-email" placeholder="E-mail cím">
         <input type="password" id="login-password" placeholder="Jelszó">
-        <button class="btn-main" onclick="handleAuth()">Indítás</button>
+        <button class="btn-main" onclick="handleAuth()">Belépés</button>
     </section>
 
     <section id="home-view" class="hidden">
         <div class="nav-bar">
-            <h1 id="home-title" tabindex="-1">Aktuális hatások</h1>
+            <h1 id="home-title" tabindex="-1" style="font-size: 1.1em;">Aktuális hatások</h1>
             <div class="menu-container">
-                <button onclick="toggleMenu()" aria-label="Profilkezelő menü" style="font-size: 24px; background:none; border:none; cursor:pointer;">👤⚙️</button>
+                <button onclick="toggleMenu()" aria-label="Profilkezelő menü" style="font-size: 24px; background:none; border:none; cursor:pointer; padding: 10px;">👤⚙️</button>
                 <div id="profile-menu" class="menu-content">
                     <button onclick="prepareNewChild()">Új személy hozzáadása</button>
                     <button onclick="editCurrentProfile()">Módosítás</button>
-                    <button onclick="deleteProfile()" style="color: red;">Törlés</button>
+                    <button onclick="deleteProfile()" style="color: #d93025;">Törlés</button>
                     <button onclick="logout()">Kijelentkezés</button>
                 </div>
             </div>
         </div>
         
         <div id="selection-panel">
-            <label for="user-select">Választott személy:</label>
-            <div style="display: flex; gap: 5px;">
-                <select id="user-select" style="flex-grow: 1;" onchange="handleUserChange()"></select>
-                <button onclick="editNamePrompt()" aria-label="Név szerkesztése" style="padding: 10px;">✏️</button>
-            </div>
+            <label for="user-select" style="display:block; text-align:left; margin-left:8%; font-size: 0.9em; color: #5f6368;">Személy:</label>
+            <select id="user-select" onchange="handleUserChange()"></select>
 
-            <label for="date-select">Lekérdezés dátuma:</label>
+            <label for="date-select" style="display:block; text-align:left; margin-left:8%; font-size: 0.9em; color: #5f6368; margin-top: 10px;">Dátum:</label>
             <input type="date" id="date-select" onchange="handleDateChange()">
-            <button id="btn-run-query" class="btn-main" onclick="runQuery()">Indítás</button>
+            
+            <button id="btn-run-query" class="btn-main" onclick="runQuery()">Elemzés indítása</button>
         </div>
 
         <div id="query-results" class="hidden">
             <table>
                 <thead>
                     <tr>
-                        <th id="first-cell" tabindex="-1">Bolygó és Jegy</th>
+                        <th id="first-cell" tabindex="-1">Bolygó</th>
                         <th>Hatás</th>
+                        <th>Következő</th>
+                        <th>Kezdete</th>
                     </tr>
                 </thead>
                 <tbody id="results-body"></tbody>
@@ -77,37 +161,43 @@
     </section>
 
     <section id="reg-view" class="hidden">
-        <h2 id="reg-title" tabindex="-1">Személy adatlapja</h2>
-        <label for="reg-name">Név:</label>
-        <input type="text" id="reg-name" placeholder="Példa János">
-        
-        <div id="reg-auth-fields" class="hidden">
-            <input type="email" id="reg-email" readonly style="background-color: #eee;">
-            <input type="password" id="reg-pass" readonly style="background-color: #eee;">
+        <h2 id="reg-title" tabindex="-1">Adatlap</h2>
+        <div id="container-new-name" class="hidden">
+            <input type="text" id="reg-name" placeholder="Név">
         </div>
-        
+        <div id="container-edit-name" class="hidden">
+            <div style="display: flex; width: 85%; margin: 0 auto; gap: 5px;">
+                <select id="reg-name-select" style="width: 100%; margin: 0;" onchange="loadPlanetDataToReg()"></select>
+                <button onclick="enableNameEditing()" aria-label="Név módosítása" style="padding: 10px; border-radius: 8px; border: 1px solid #ccc; background: #fff;">✏️</button>
+            </div>
+        </div>
+        <div id="reg-auth-fields" class="hidden">
+            <input type="email" id="reg-email" readonly style="background-color: #f1f3f4;">
+            <input type="password" id="reg-pass" readonly style="background-color: #f1f3f4;">
+        </div>
         <div id="reg-planets"></div>
-        
         <button id="btn-save" class="btn-main" onclick="submitRegistration()">Mentés</button>
         <button class="btn-vissza" onclick="cancelRegistration()">Mégsem</button>
     </section>
 
     <section id="delete-view" class="hidden">
-        <h2 id="delete-title" tabindex="-1">Profilkezelés - Törlés</h2>
-        <label for="delete-user-select">Törlendő személy kiválasztása:</label>
+        <h2 id="delete-title" tabindex="-1">Törlés</h2>
         <select id="delete-user-select"></select>
-
-        <button class="btn-main" onclick="confirmDelete()">Törlés</button>
+        <button class="btn-main" style="background-color: #d93025;" onclick="confirmDelete()">Végleges törlés</button>
         <button class="btn-vissza" onclick="cancelRegistration()">Vissza</button>
     </section>
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz8X-dS12AxUdcGvav27aOS4vNKBvnsnmmBp9HGWIIwY9Y7YfEIWSU4zEEaybDcDU4_yg/exec";
-const PLANETS_CONFIG = [{id:"nap", label:"Nap"}, {id:"asc", label:"ASC"}, {id:"hold", label:"Hold"}, {id:"merkur", label:"Merkúr"}, {id:"venusz", label:"Vénusz"}, {id:"mars", label:"Mars"}];
+// --- ÁLLANDÓK ÉS KONFIGURÁCIÓ ---
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwTCfi_-CsOhHln8LhdOqkR4YCkTEds7S2x74ayeBEP18NDDwOeTXanwNeBv1MrR9ImrQ/exec";
+const PLANETS_CONFIG = [
+    {id:"nap", label:"Nap"}, {id:"asc", label:"ASC"}, {id:"hold", label:"Hold"}, 
+    {id:"merkur", label:"Merkúr"}, {id:"venusz", label:"Vénusz"}, {id:"mars", label:"Mars"}
+];
 const ZODIACS = ["Kos", "Bika", "Ikrek", "Rák", "Oroszlán", "Szűz", "Mérleg", "Skorpió", "Nyilas", "Bak", "Vízöntő", "Halak"];
 
-let appData = { users: {}, currentEditID: null, minDate: "", maxDate: "" };
+let appData = { users: {}, usersData: {}, currentEditID: null, minDate: "", maxDate: "" };
 let deviceID = localStorage.getItem('asztro_deviceID') || 'DEV-' + Math.random().toString(36).substr(2, 9).toUpperCase();
 localStorage.setItem('asztro_deviceID', deviceID);
 
@@ -122,6 +212,7 @@ function showView(id) {
     document.getElementById("profile-menu").classList.remove("show");
 }
 
+// --- CORE FUNKCIÓK ---
 async function handleAuth() {
     const email = document.getElementById('login-email').value.trim();
     const pass = document.getElementById('login-password').value.trim();
@@ -136,6 +227,7 @@ async function handleAuth() {
         if (res.status === "SUCCESS") {
             localStorage.setItem('asztro_parentID', res.parentID);
             appData.users = res.users;
+            appData.usersData = res.usersData;
             updateHomeUI();
             showView('home-view');
         } else if (res.allapotjelzes === "USER_NOT_FOUND") {
@@ -164,7 +256,12 @@ async function runQuery() {
             for(let i=0; i < m.length; i+=5) {
                 const tr = document.createElement('tr');
                 const rgb = `rgb(${m[i+2]},${m[i+3]},${m[i+4]})`;
-                tr.innerHTML = `<td><strong>${PLANETS_CONFIG[i/5].label}:</strong> ${m[i]}</td><td style="background:${rgb};color:${rgb};border:1px solid #ccc;">${m[i+1]}</td>`;
+                tr.innerHTML = `
+                    <td><strong>${PLANETS_CONFIG[i/5].label}</strong></td>
+                    <td><span class="effect-badge" style="background:${rgb}; color: #000;">${m[i+1]}</span></td>
+                    <td>-</td>
+                    <td>-</td>
+                `;
                 tbody.appendChild(tr);
             }
             document.getElementById('query-results').classList.remove('hidden');
@@ -173,30 +270,7 @@ async function runQuery() {
     } catch(e) { alert("Szerver hiba."); }
 }
 
-async function loadInitialData() {
-    try {
-        const resp = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'load' }) });
-        const res = await resp.json();
-        if (res.status === "SUCCESS") {
-            appData.minDate = res.minDate;
-            appData.maxDate = res.maxDate;
-            showView('login-view');
-        }
-    } catch (e) { showView('login-view'); }
-}
-
-async function checkSession(pID) {
-    try {
-        const resp = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'checkSession', parentID: pID, deviceID: deviceID }) });
-        const res = await resp.json();
-        if (res.status === "SESSION_OK") {
-            appData.users = res.users;
-            updateHomeUI();
-            showView('home-view');
-        } else { showView('login-view'); }
-    } catch(e) { showView('login-view'); }
-}
-
+// --- UI SEGÉDFÜGGVÉNYEK ---
 function updateHomeUI() {
     const sel = document.getElementById('user-select');
     sel.innerHTML = "";
@@ -205,45 +279,7 @@ function updateHomeUI() {
         opt.value = id; opt.text = appData.users[id];
         sel.appendChild(opt);
     }
-    const dInput = document.getElementById('date-select');
-    dInput.valueAsDate = new Date();
-}
-
-function handleUserChange() { document.getElementById('date-select').focus(); }
-function handleDateChange() { document.getElementById('btn-run-query').focus(); }
-function toggleMenu() { document.getElementById("profile-menu").classList.toggle("show"); }
-function cancelRegistration() { showView('home-view'); }
-
-function prepareNewChild() {
-    appData.currentEditID = null;
-    document.getElementById('reg-title').innerText = "Új személy hozzáadása";
-    document.getElementById('reg-name').value = "";
-    showView('reg-view');
-}
-
-function editCurrentProfile() {
-    const userID = document.getElementById('user-select').value;
-    appData.currentEditID = userID;
-    document.getElementById('reg-title').innerText = "Profil módosítása";
-    document.getElementById('reg-name').value = document.getElementById('user-select').options[document.getElementById('user-select').selectedIndex].text;
-    showView('reg-view');
-}
-
-function openDeleteView() {
-    const mainSelect = document.getElementById('user-select');
-    const deleteSelect = document.getElementById('delete-user-select');
-    deleteSelect.innerHTML = mainSelect.innerHTML;
-    deleteSelect.value = mainSelect.value;
-    showView('delete-view');
-}
-
-function deleteProfile() { openDeleteView(); }
-
-async function logout() {
-    const pID = localStorage.getItem('asztro_parentID');
-    await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'logout', parentID: pID }) });
-    localStorage.removeItem('asztro_parentID');
-    location.reload();
+    document.getElementById('date-select').valueAsDate = new Date();
 }
 
 function generateRegFields() {
@@ -251,7 +287,8 @@ function generateRegFields() {
     cont.innerHTML = "";
     PLANETS_CONFIG.forEach((p, index) => {
         const wrap = document.createElement('div');
-        wrap.innerHTML = `<label for="reg-${p.id}">${p.label}:</label>`;
+        wrap.style.marginBottom = "10px";
+        wrap.innerHTML = `<label style="display:block; font-size:0.8em; margin-left:8%;">${p.label}:</label>`;
         const sel = document.createElement('select');
         sel.id = "reg-" + p.id;
         ZODIACS.forEach(z => {
@@ -269,11 +306,136 @@ function generateRegFields() {
     });
 }
 
+// --- PROFILKEZELÉS ---
+function toggleMenu() { document.getElementById("profile-menu").classList.toggle("show"); }
+
+function prepareNewChild() {
+    appData.currentEditID = null;
+    document.getElementById('reg-title').innerText = "Új személy";
+    document.getElementById('container-new-name').classList.remove('hidden');
+    document.getElementById('container-edit-name').classList.add('hidden');
+    document.getElementById('reg-name').value = "";
+    PLANETS_CONFIG.forEach(p => document.getElementById("reg-" + p.id).selectedIndex = 0);
+    showView('reg-view');
+}
+
+function editCurrentProfile() {
+    const mainSelect = document.getElementById('user-select');
+    if(!mainSelect.value) return;
+    appData.currentEditID = mainSelect.value;
+    document.getElementById('reg-title').innerText = "Módosítás";
+    document.getElementById('container-new-name').classList.add('hidden');
+    document.getElementById('container-edit-name').classList.remove('hidden');
+    const regSelect = document.getElementById('reg-name-select');
+    regSelect.innerHTML = mainSelect.innerHTML;
+    regSelect.value = mainSelect.value;
+    loadPlanetDataToReg();
+    showView('reg-view');
+}
+
+function loadPlanetDataToReg() {
+    const userID = document.getElementById('reg-name-select').value;
+    if (appData.usersData && appData.usersData[userID]) {
+        const data = appData.usersData[userID];
+        PLANETS_CONFIG.forEach(p => {
+            const el = document.getElementById("reg-" + p.id);
+            if (el && data[p.id]) el.value = data[p.id];
+        });
+    }
+}
+
+async function submitRegistration() {
+    const isUpdate = appData.currentEditID !== null;
+    let name = isUpdate ? 
+        document.getElementById('reg-name-select').options[document.getElementById('reg-name-select').selectedIndex].text : 
+        document.getElementById('reg-name').value.trim();
+    
+    if (!document.getElementById('container-new-name').classList.contains('hidden')) {
+        name = document.getElementById('reg-name').value.trim();
+    }
+
+    if (!name) return alert("Név megadása kötelező!");
+    const planets = {};
+    PLANETS_CONFIG.forEach(p => planets[p.id] = document.getElementById("reg-" + p.id).value);
+
+    try {
+        announce("Mentés...");
+        const resp = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: isUpdate ? "update" : "register",
+                parentID: localStorage.getItem('asztro_parentID'),
+                deviceID: deviceID,
+                userID: appData.currentEditID,
+                name: name,
+                planets: planets
+            })
+        });
+        const res = await resp.json();
+        if (res.status === "SUCCESS") {
+            appData.users = res.users;
+            appData.usersData = res.usersData;
+            updateHomeUI();
+            showView('home-view');
+            alert("Sikeres mentés!");
+        }
+    } catch (e) { alert("Hiba mentéskor."); }
+}
+
+// --- TÖRLÉS ÉS EGYÉB ---
+function deleteProfile() {
+    const mainSelect = document.getElementById('user-select');
+    const delSelect = document.getElementById('delete-user-select');
+    delSelect.innerHTML = mainSelect.innerHTML;
+    delSelect.value = mainSelect.value;
+    showView('delete-view');
+}
+
+async function confirmDelete() {
+    const userID = document.getElementById('delete-user-select').value;
+    if(!confirm("Biztosan törlöd?")) return;
+    try {
+        const resp = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'delete', userID: userID, parentID: localStorage.getItem('asztro_parentID'), deviceID: deviceID })
+        });
+        const res = await resp.json();
+        if(res.status === "SUCCESS") {
+            appData.users = res.users;
+            appData.usersData = res.usersData;
+            if(res.isEmpty) location.reload(); else { updateHomeUI(); showView('home-view'); }
+        }
+    } catch(e) { alert("Hiba törléskor."); }
+}
+
+async function checkSession(pID) {
+    try {
+        const resp = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'checkSession', parentID: pID, deviceID: deviceID }) });
+        const res = await resp.json();
+        if (res.status === "SESSION_OK") {
+            appData.users = res.users;
+            appData.usersData = res.usersData;
+            updateHomeUI();
+            showView('home-view');
+        } else { showView('login-view'); }
+    } catch(e) { showView('login-view'); }
+}
+
+function handleUserChange() { document.getElementById('date-select').focus(); }
+function handleDateChange() { document.getElementById('btn-run-query').focus(); }
+function cancelRegistration() { showView('home-view'); }
+function logout() { localStorage.removeItem('asztro_parentID'); location.reload(); }
+function enableNameEditing() {
+    document.getElementById('container-edit-name').classList.add('hidden');
+    document.getElementById('container-new-name').classList.remove('hidden');
+    document.getElementById('reg-name').value = document.getElementById('reg-name-select').options[document.getElementById('reg-name-select').selectedIndex].text;
+    document.getElementById('reg-name').focus();
+}
+
 window.onload = async () => {
     generateRegFields();
     const pID = localStorage.getItem('asztro_parentID');
-    if (pID) await checkSession(pID); 
-    else await loadInitialData();
+    if (pID) await checkSession(pID); else showView('login-view');
 };
 </script>
 </body>
