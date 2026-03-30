@@ -238,6 +238,10 @@ async function handleAuth() {
         announce("Bejelentkezés...");
         const resp = await fetch(SCRIPT_URL, {
             method: 'POST',
+mode: 'cors', // Expliciten kérjük a CORS-t
+    headers: {
+        'Content-Type': 'text/plain;charset=utf-8', // A GAS jobban szereti a plain text-et POST-nál
+    },
             body: JSON.stringify({ 
                 action: 'login', 
                 email: email, 
@@ -297,6 +301,10 @@ async function runQuery() {
         announce("Lekérdezés...");
         const resp = await fetch(SCRIPT_URL, {
             method: 'POST',
+mode: 'cors', // Expliciten kérjük a CORS-t
+    headers: {
+        'Content-Type': 'text/plain;charset=utf-8', // A GAS jobban szereti a plain text-et POST-nál
+    },
             body: JSON.stringify({ action: 'query', userID: userId, lekerdezettDatum: date, parentID: localStorage.getItem('asztro_parentID'), deviceID: deviceID })
         });
         const res = await resp.json();
@@ -433,6 +441,10 @@ async function submitRegistration() {
         announce("Mentés...");
         const resp = await fetch(SCRIPT_URL, {
             method: 'POST',
+mode: 'cors', // Expliciten kérjük a CORS-t
+    headers: {
+        'Content-Type': 'text/plain;charset=utf-8', // A GAS jobban szereti a plain text-et POST-nál
+    },
             body: JSON.stringify(payload)
         });
         const res = await resp.json();
@@ -472,6 +484,10 @@ async function confirmDelete() {
     try {
         const resp = await fetch(SCRIPT_URL, {
             method: 'POST',
+mode: 'cors', // Expliciten kérjük a CORS-t
+    headers: {
+        'Content-Type': 'text/plain;charset=utf-8', // A GAS jobban szereti a plain text-et POST-nál
+    },
             body: JSON.stringify({ action: 'delete', userID: userID, parentID: localStorage.getItem('asztro_parentID'), deviceID: deviceID })
         });
         const res = await resp.json();
@@ -491,7 +507,13 @@ async function confirmDelete() {
 
 async function checkSession(pID) {
     try {
-        const resp = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'checkSession', parentID: pID, deviceID: deviceID }) });
+        const resp = await fetch(SCRIPT_URL, { 
+method: 'POST', 
+mode: 'cors', // Expliciten kérjük a CORS-t
+    headers: {
+        'Content-Type': 'text/plain;charset=utf-8', // A GAS jobban szereti a plain text-et POST-nál
+    },
+body: JSON.stringify({ action: 'checkSession', parentID: pID, deviceID: deviceID }) });
         const res = await resp.json();
         if (res.status === "SESSION_OK") {
             appData.users = res.users;
