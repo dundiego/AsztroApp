@@ -249,6 +249,11 @@ mode: 'cors', // Expliciten kérjük a CORS-t
                 deviceID: deviceID 
             })
         });
+        // Itt jön a trükk: ha a Google 404-et hazudik, de a tábla frissült, 
+// akkor a válasz nem JSON. Nézzük meg, mi jön vissza:
+const text = await resp.text(); 
+console.log("Szerver válasza:", text);
+const res = JSON.parse(text);
         const res = await resp.json();
         
         if (res.status === "SUCCESS") {
