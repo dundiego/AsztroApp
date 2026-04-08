@@ -120,17 +120,18 @@
         <h1 tabindex="-1">Betöltés...</h1>
     </section>
 
-    <section id="login-view" class="hidden">
-        <h2 tabindex="-1">Bejelentkezés</h2>
-        <input type="email" id="login-email" placeholder="E-mail cím">
-        <input type="password" id="login-password" placeholder="Jelszó">
-        <button class="btn-main" onclick="handleAuth()">Belépés</button>
-        
-        <div style="text-align: center; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
-            <p style="font-size: 0.9em; color: #5f6368;">Még nincs fiókod?</p>
-            <button class="btn-vissza" onclick="startFreshRegistration()">Új regisztráció</button>
-        </div>
-    </section>
+<section id="login-view" class="hidden">
+    <h2 tabindex="-1">Bejelentkezés</h2>
+    <!-- Hozzáadva: name és autocomplete a jelszókezelőknek -->
+    <input type="email" id="login-email" name="username" autocomplete="username" placeholder="E-mail cím">
+    <input type="password" id="login-password" name="password" autocomplete="current-password" placeholder="Jelszó">
+    <button class="btn-main" onclick="handleAuth()">Belépés</button>
+    
+    <div style="text-align: center; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
+        <p style="font-size: 0.9em; color: #5f6368;">Még nincs fiókod?</p>
+        <button class="btn-vissza" onclick="startFreshRegistration()">Új regisztráció</button>
+    </div>
+</section>
 
     <section id="home-view" class="hidden">
         <div class="nav-bar">
@@ -229,8 +230,13 @@ function showView(id) {
 
 // CSAK BEJELENTKEZÉS
 async function handleAuth() {
-    const email = document.getElementById('login-email').value.trim();
-    const pass = document.getElementById('login-password').value.trim();
+    // ROBOSZTUS ADATKINYERÉS: Közvetlenül a DOM-ból olvassuk ki, 
+    // így a jelszókezelő által betöltött érték is átjön.
+    const emailField = document.getElementById('login-email');
+    const passField = document.getElementById('login-password');
+    
+    const email = emailField.value.trim();
+    const pass = passField.value.trim();
     
     if(!email || !pass) return alert("Kérlek töltsd ki az adatokat!");
     
@@ -238,10 +244,10 @@ async function handleAuth() {
         announce("Bejelentkezés...");
         const resp = await fetch(SCRIPT_URL, {
             method: 'POST',
-mode: 'cors', // Expliciten kérjük a CORS-t
-    headers: {
-        'Content-Type': 'text/plain;charset=utf-8', // A GAS jobban szereti a plain text-et POST-nál
-    },
+            mode: 'cors',
+            headers: {
+                'Content-Type': 'text/plain;charset=utf-8',
+            },
             body: JSON.stringify({ 
                 action: 'login', 
                 email: email, 
@@ -249,12 +255,18 @@ mode: 'cors', // Expliciten kérjük a CORS-t
                 deviceID: deviceID 
             })
         });
-        // Itt jön a trükk: ha a Google 404-et hazudik, de a tábla frissült, 
-// akkor a válasz nem JSON. Nézzük meg, mi jön vissza:
-const text = await resp.text(); 
-console.log("Szerver válasza:", text);
-const res = JSON.parse(text);
-        const res = await resp.json();
+
+        // JAVÍTÁS: Csak egyszer olvassuk be a választ!
+        const text = await resp.text(); 
+        console.log("Szerver válasza:", text);
+        
+        let res;
+        try {
+            res = JSON.parse(text);
+        } catch(e) {
+            console.error("JSON parse hiba:", text);
+            throw new Error("Érvénytelen válasz a szervertől.");
+        }
         
         if (res.status === "SUCCESS") {
             localStorage.setItem('asztro_parentID', res.parentID);
@@ -262,13 +274,15 @@ const res = JSON.parse(text);
             appData.usersData = res.usersData;
             updateHomeUI();
             showView('home-view');
+            announce("Sikeres belépés.");
         } else { 
-            // Itt már nem dobunk át regisztrációra, csak közöljük a hibát
             const hiba = res.allapotjelzes === "USER_NOT_FOUND" ? "Nincs ilyen felhasználó!" : "Hibás jelszó!";
             alert("Sikertelen belépés: " + hiba); 
+            announce("Hiba a belépés során.");
         }
     } catch(e) { 
-        alert("Hiba a kapcsolódás során."); 
+        console.error("Fetch hiba:", e);
+        alert("Hiba a kapcsolódás során: " + e.message); 
     }
 }
 
