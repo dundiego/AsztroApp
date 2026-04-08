@@ -204,7 +204,7 @@
 
 <script>
 // --- ÁLLANDÓK ÉS KONFIGURÁCIÓ ---
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwdzhjHek0rtZfYkbmEAsqLxtcWYe5iKuwQsFZB0iPcWcS5qwgnIHc0Qu5UMxC85ZeAPw/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx5ED2-QnvwOx8PxP0k6oIPLcXznmUU3tD9OBY2xWZVNfKmFefJjQRjqoQILB7FKDFyww/exec";
 const PLANETS_CONFIG = [
     {id:"nap", label:"Nap"}, {id:"asc", label:"ASC"}, {id:"hold", label:"Hold"}, 
     {id:"merkur", label:"Merkúr"}, {id:"venusz", label:"Vénusz"}, {id:"mars", label:"Mars"}
@@ -510,7 +510,13 @@ mode: 'cors', // Expliciten kérjük a CORS-t
             body: JSON.stringify({ action: 'delete', userID: userID, parentID: localStorage.getItem('asztro_parentID'), deviceID: deviceID })
         });
         const res = await resp.json();
-        if(res.status === "SUCCESS") {
+if (res.status === "ACCOUNT_DELETED") {
+        alert("A fiókod és minden kapcsolódó adat sikeresen törölve.");
+        // Teljes takarítás
+        localStorage.clear();
+        appData = { users: {}, usersData: {} };
+        showView('login-view');
+    } else if(res.status === "SUCCESS") {
             appData.users = res.users;
             appData.usersData = res.usersData;
             if(res.isEmpty) {
