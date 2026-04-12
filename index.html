@@ -47,7 +47,6 @@
         .btn-main { background-color: var(--primary-blue); color: var(--white); }
         .btn-vissza { background-color: var(--vissza-bg); color: #3c4043; border: 1px solid #dadce0; }
         
-        /* Megerősített beviteli mezők */
         select, input { 
             width: 85%; 
             padding: 12px; 
@@ -93,7 +92,7 @@
         .show { display: block; }
 
         table { width: 100%; border-collapse: separate; border-spacing: 0 8px; margin-top: 20px; }
-        th { padding: 12px 8px; text-align: left; font-size: 11px; color: #5f6368; text-transform: uppercase; }
+        th { padding: 12px 8px; text-align: left; font-size: 11px; color: #5f6368; text-transform: uppercase; line-height: 1.2; }
         td { background: white; padding: 12px 8px; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
         td:first-child { border-left: 1px solid #eee; border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
         td:last-child { border-right: 1px solid #eee; border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
@@ -120,18 +119,17 @@
         <h1 tabindex="-1">Betöltés...</h1>
     </section>
 
-<section id="login-view" class="hidden">
-    <h2 tabindex="-1">Bejelentkezés</h2>
-    <!-- Hozzáadva: name és autocomplete a jelszókezelőknek -->
-    <input type="email" id="login-email" name="username" autocomplete="username" placeholder="E-mail cím">
-    <input type="password" id="login-password" name="password" autocomplete="current-password" placeholder="Jelszó">
-    <button class="btn-main" onclick="handleAuth()">Belépés</button>
-    
-    <div style="text-align: center; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
-        <p style="font-size: 0.9em; color: #5f6368;">Még nincs fiókod?</p>
-        <button class="btn-vissza" onclick="startFreshRegistration()">Új regisztráció</button>
-    </div>
-</section>
+    <section id="login-view" class="hidden">
+        <h2 tabindex="-1">Bejelentkezés</h2>
+        <input type="email" id="login-email" name="username" autocomplete="username" placeholder="E-mail cím">
+        <input type="password" id="login-password" name="password" autocomplete="current-password" placeholder="Jelszó">
+        <button class="btn-main" onclick="handleAuth()">Belépés</button>
+        
+        <div style="text-align: center; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
+            <p style="font-size: 0.9em; color: #5f6368;">Még nincs fiókod?</p>
+            <button class="btn-vissza" onclick="startFreshRegistration()">Új regisztráció</button>
+        </div>
+    </section>
 
     <section id="home-view" class="hidden">
         <div class="nav-bar">
@@ -161,10 +159,10 @@
             <table>
                 <thead>
                     <tr>
-                        <th id="first-cell" tabindex="-1">Bolygó</th>
-                        <th>Hatás</th>
-                        <th>Következő</th>
-                        <th>Kezdete</th>
+                        <th id="first-cell" tabindex="-1">Bolygó /<br>Jegy</th>
+                        <th>Aktuális<br>hatás</th>
+                        <th>Következő<br>hatás</th>
+                        <th>Következő hatás<br>kezdete</th>
                     </tr>
                 </thead>
                 <tbody id="results-body"></tbody>
@@ -203,7 +201,6 @@
 </div>
 
 <script>
-// --- ÁLLANDÓK ÉS KONFIGURÁCIÓ ---
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx5ED2-QnvwOx8PxP0k6oIPLcXznmUU3tD9OBY2xWZVNfKmFefJjQRjqoQILB7FKDFyww/exec";
 const PLANETS_CONFIG = [
     {id:"nap", label:"Nap"}, {id:"asc", label:"ASC"}, {id:"hold", label:"Hold"}, 
@@ -226,15 +223,9 @@ function showView(id) {
     document.getElementById("profile-menu").classList.remove("show");
 }
 
-// --- CORE FUNKCIÓK ---
-
-// CSAK BEJELENTKEZÉS
 async function handleAuth() {
-    // ROBOSZTUS ADATKINYERÉS: Közvetlenül a DOM-ból olvassuk ki, 
-    // így a jelszókezelő által betöltött érték is átjön.
     const emailField = document.getElementById('login-email');
     const passField = document.getElementById('login-password');
-    
     const email = emailField.value.trim();
     const pass = passField.value.trim();
     
@@ -245,63 +236,44 @@ async function handleAuth() {
         const resp = await fetch(SCRIPT_URL, {
             method: 'POST',
             mode: 'cors',
-            headers: {
-                'Content-Type': 'text/plain;charset=utf-8',
-            },
-            body: JSON.stringify({ 
-                action: 'login', 
-                email: email, 
-                password: pass, 
-                deviceID: deviceID 
-            })
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'login', email: email, password: pass, deviceID: deviceID })
         });
 
-        // JAVÍTÁS: Csak egyszer olvassuk be a választ!
         const text = await resp.text(); 
-        console.log("Szerver válasza:", text);
-        
-        let res;
-        try {
-            res = JSON.parse(text);
-        } catch(e) {
-            console.error("JSON parse hiba:", text);
-            throw new Error("Érvénytelen válasz a szervertől.");
-        }
+        let res = JSON.parse(text);
         
         if (res.status === "SUCCESS") {
             localStorage.setItem('asztro_parentID', res.parentID);
             appData.users = res.users;
             appData.usersData = res.usersData;
             updateHomeUI();
+            
+            // JAVÍTÁS 1: Üzenetek törlése nézetváltás előtt
+            announce(""); 
             showView('home-view');
-            announce("Sikeres belépés.");
         } else { 
             const hiba = res.allapotjelzes === "USER_NOT_FOUND" ? "Nincs ilyen felhasználó!" : "Hibás jelszó!";
             alert("Sikertelen belépés: " + hiba); 
             announce("Hiba a belépés során.");
         }
     } catch(e) { 
-        console.error("Fetch hiba:", e);
-        alert("Hiba a kapcsolódás során: " + e.message); 
+        alert("Hiba a kapcsolódás során."); 
     }
 }
 
-// ÚJ REGISZTRÁCIÓ INDÍTÁSA (Tiszta lappal)
 function startFreshRegistration() {
+    // JAVÍTÁS 4: Regisztrációs mezők teljes kiürítése
+    document.getElementById('reg-email').value = "";
+    document.getElementById('reg-pass').value = "";
+    document.getElementById('reg-name').value = "";
+
     appData.currentEditID = null;
     document.getElementById('reg-title').innerText = "Regisztráció";
-    
-    // UI elemek beállítása
     document.getElementById('container-new-name').classList.remove('hidden');
     document.getElementById('container-edit-name').classList.add('hidden');
     document.getElementById('reg-auth-fields').classList.remove('hidden');
     
-    // Értékek átvétele a login mezőkből (kényelmi funkció)
-    document.getElementById('reg-name').value = "";
-    document.getElementById('reg-email').value = document.getElementById('login-email').value;
-    document.getElementById('reg-pass').value = document.getElementById('login-password').value;
-    
-    // Bolygók alaphelyzetbe
     PLANETS_CONFIG.forEach(p => {
         const el = document.getElementById("reg-" + p.id);
         if(el) el.selectedIndex = 0;
@@ -311,263 +283,7 @@ function startFreshRegistration() {
     announce("Kérlek add meg a neved és válaszd ki a jegyeidet!");
 }
 
-
 async function runQuery() {
     const userId = document.getElementById('user-select').value;
     const date = document.getElementById('date-select').value;
-    if(!date) return alert("Válassz dátumot!");
-    try {
-        announce("Lekérdezés...");
-        const resp = await fetch(SCRIPT_URL, {
-            method: 'POST',
-mode: 'cors', // Expliciten kérjük a CORS-t
-    headers: {
-        'Content-Type': 'text/plain;charset=utf-8', // A GAS jobban szereti a plain text-et POST-nál
-    },
-            body: JSON.stringify({ action: 'query', userID: userId, lekerdezettDatum: date, parentID: localStorage.getItem('asztro_parentID'), deviceID: deviceID })
-        });
-        const res = await resp.json();
-        if(res.status === "SUCCESS") {
-            const tbody = document.getElementById('results-body');
-            tbody.innerHTML = "";
-            const m = res.resultMatrix;
-            for(let i=0; i < m.length; i+=5) {
-                const tr = document.createElement('tr');
-                const rgb = `rgb(${m[i+2]},${m[i+3]},${m[i+4]})`;
-                tr.innerHTML = `
-                    <td><strong>${PLANETS_CONFIG[i/5].label}</strong></td>
-                    <td><span class="effect-badge" style="background:${rgb}; color: #000;">${m[i+1]}</span></td>
-                    <td>-</td>
-                    <td>-</td>
-                `;
-                tbody.appendChild(tr);
-            }
-            document.getElementById('query-results').classList.remove('hidden');
-            setTimeout(() => { document.getElementById('first-cell').focus(); }, 100);
-        }
-    } catch(e) { alert("Szerver hiba."); }
-}
-
-// --- UI SEGÉDFÜGGVÉNYEK ---
-function updateHomeUI() {
-    const sel = document.getElementById('user-select');
-    sel.innerHTML = "";
-    for(let id in appData.users) {
-        let opt = document.createElement('option');
-        opt.value = id; opt.text = appData.users[id];
-        sel.appendChild(opt);
-    }
-    document.getElementById('date-select').valueAsDate = new Date();
-}
-
-function generateRegFields() {
-    const cont = document.getElementById('reg-planets');
-    cont.innerHTML = "";
-    PLANETS_CONFIG.forEach((p, index) => {
-        const wrap = document.createElement('div');
-        wrap.style.marginBottom = "10px";
-        wrap.innerHTML = `<label style="display:block; font-size:0.8em; margin-left:8%;">${p.label}:</label>`;
-        const sel = document.createElement('select');
-        sel.id = "reg-" + p.id;
-        ZODIACS.forEach(z => {
-            const opt = document.createElement('option');
-            opt.value = z; opt.text = z;
-            sel.appendChild(opt);
-        });
-        sel.onchange = () => {
-            const nextIdx = index + 1;
-            if (nextIdx < PLANETS_CONFIG.length) { document.getElementById("reg-" + PLANETS_CONFIG[nextIdx].id).focus(); }
-            else { document.getElementById("btn-save").focus(); }
-        };
-        wrap.appendChild(sel);
-        cont.appendChild(wrap);
-    });
-}
-
-// --- PROFILKEZELÉS ---
-function toggleMenu() { document.getElementById("profile-menu").classList.toggle("show"); }
-
-function prepareNewChild() {
-    appData.currentEditID = null;
-    document.getElementById('reg-title').innerText = "Új személy";
-    document.getElementById('container-new-name').classList.remove('hidden');
-    document.getElementById('container-edit-name').classList.add('hidden');
-    document.getElementById('reg-auth-fields').classList.add('hidden');
-    document.getElementById('reg-name').value = "";
-    PLANETS_CONFIG.forEach(p => document.getElementById("reg-" + p.id).selectedIndex = 0);
-    showView('reg-view');
-}
-
-function editCurrentProfile() {
-    const mainSelect = document.getElementById('user-select');
-    if(!mainSelect.value) return;
-    appData.currentEditID = mainSelect.value;
-    document.getElementById('reg-title').innerText = "Módosítás";
-    document.getElementById('container-new-name').classList.add('hidden');
-    document.getElementById('container-edit-name').classList.remove('hidden');
-    document.getElementById('reg-auth-fields').classList.add('hidden');
-    const regSelect = document.getElementById('reg-name-select');
-    regSelect.innerHTML = mainSelect.innerHTML;
-    regSelect.value = mainSelect.value;
-    loadPlanetDataToReg();
-    showView('reg-view');
-}
-
-function loadPlanetDataToReg() {
-    const userID = document.getElementById('reg-name-select').value;
-    if (appData.usersData && appData.usersData[userID]) {
-        const data = appData.usersData[userID];
-        PLANETS_CONFIG.forEach(p => {
-            const el = document.getElementById("reg-" + p.id);
-            if (el && data[p.id]) el.value = data[p.id];
-        });
-    }
-}
-
-async function submitRegistration() {
-    const isUpdate = appData.currentEditID !== null;
-    const currentParentID = localStorage.getItem('asztro_parentID');
-    const isNewUser = !currentParentID;
-    
-    let name = "";
-    if (!document.getElementById('container-new-name').classList.contains('hidden')) {
-        name = document.getElementById('reg-name').value.trim();
-    } else {
-        const sel = document.getElementById('reg-name-select');
-        name = sel.options[sel.selectedIndex].text;
-    }
-
-    if (!name) return alert("Név megadása kötelező!");
-    
-    const planets = {};
-    PLANETS_CONFIG.forEach(p => planets[p.id] = document.getElementById("reg-" + p.id).value);
-
-    const payload = {
-        action: isUpdate ? "update" : "register",
-        parentID: currentParentID,
-        deviceID: deviceID,
-        userID: appData.currentEditID,
-        name: name,
-        planets: planets
-    };
-
-    if (isNewUser) {
-        payload.email = document.getElementById('reg-email').value.trim();
-        payload.password = document.getElementById('reg-pass').value.trim();
-    }
-
-    try {
-        announce("Mentés...");
-        const resp = await fetch(SCRIPT_URL, {
-            method: 'POST',
-mode: 'cors', // Expliciten kérjük a CORS-t
-    headers: {
-        'Content-Type': 'text/plain;charset=utf-8', // A GAS jobban szereti a plain text-et POST-nál
-    },
-            body: JSON.stringify(payload)
-        });
-        const res = await resp.json();
-        
-        if (res.status === "SUCCESS") {
-            // Regisztráció után elmentjük a kapott parentID-t, ha eddig nem volt
-            if (res.parentID || res.userID) {
-                const newPID = res.parentID || res.userID; // Első regnél az új ID lesz a parent
-                if (!currentParentID) localStorage.setItem('asztro_parentID', newPID);
-            }
-            
-            appData.users = res.users;
-            appData.usersData = res.usersData;
-            updateHomeUI();
-            showView('home-view');
-            alert("Sikeres mentés!");
-        } else {
-            alert("Hiba: " + (res.allapotjelzes || "Ismeretlen hiba"));
-        }
-    } catch (e) { 
-        alert("Hiba mentéskor."); 
-    }
-}
-
-// --- TÖRLÉS ÉS EGYÉB ---
-function deleteProfile() {
-    const mainSelect = document.getElementById('user-select');
-    const delSelect = document.getElementById('delete-user-select');
-    delSelect.innerHTML = mainSelect.innerHTML;
-    delSelect.value = mainSelect.value;
-    showView('delete-view');
-}
-
-async function confirmDelete() {
-    const userID = document.getElementById('delete-user-select').value;
-    if(!confirm("Biztosan törlöd?")) return;
-    try {
-        const resp = await fetch(SCRIPT_URL, {
-            method: 'POST',
-mode: 'cors', // Expliciten kérjük a CORS-t
-    headers: {
-        'Content-Type': 'text/plain;charset=utf-8', // A GAS jobban szereti a plain text-et POST-nál
-    },
-            body: JSON.stringify({ action: 'delete', userID: userID, parentID: localStorage.getItem('asztro_parentID'), deviceID: deviceID })
-        });
-        const res = await resp.json();
-if (res.status === "ACCOUNT_DELETED") {
-        alert("A fiókod és minden kapcsolódó adat sikeresen törölve.");
-        // Teljes takarítás
-        localStorage.clear();
-        appData = { users: {}, usersData: {} };
-        showView('login-view');
-    } else if(res.status === "SUCCESS") {
-            appData.users = res.users;
-            appData.usersData = res.usersData;
-            if(res.isEmpty) {
-                localStorage.removeItem('asztro_parentID');
-                location.reload();
-            } else { 
-                updateHomeUI(); 
-                showView('home-view'); 
-            }
-        }
-    } catch(e) { alert("Hiba törléskor."); }
-}
-
-async function checkSession(pID) {
-    try {
-        const resp = await fetch(SCRIPT_URL, { 
-method: 'POST', 
-mode: 'cors', // Expliciten kérjük a CORS-t
-    headers: {
-        'Content-Type': 'text/plain;charset=utf-8', // A GAS jobban szereti a plain text-et POST-nál
-    },
-body: JSON.stringify({ action: 'checkSession', parentID: pID, deviceID: deviceID }) });
-        const res = await resp.json();
-        if (res.status === "SESSION_OK") {
-            appData.users = res.users;
-            appData.usersData = res.usersData;
-            updateHomeUI();
-            showView('home-view');
-        } else { showView('login-view'); }
-    } catch(e) { showView('login-view'); }
-}
-
-function handleUserChange() { document.getElementById('date-select').focus(); }
-function handleDateChange() { document.getElementById('btn-run-query').focus(); }
-function cancelRegistration() { 
-    if (localStorage.getItem('asztro_parentID')) showView('home-view'); 
-    else showView('login-view');
-}
-function logout() { localStorage.removeItem('asztro_parentID'); location.reload(); }
-function enableNameEditing() {
-    document.getElementById('container-edit-name').classList.add('hidden');
-    document.getElementById('container-new-name').classList.remove('hidden');
-    document.getElementById('reg-name').value = document.getElementById('reg-name-select').options[document.getElementById('reg-name-select').selectedIndex].text;
-    document.getElementById('reg-name').focus();
-}
-
-window.onload = async () => {
-    generateRegFields();
-    const pID = localStorage.getItem('asztro_parentID');
-    if (pID) await checkSession(pID); else showView('login-view');
-};
-</script>
-</body>
-</html>
+if
