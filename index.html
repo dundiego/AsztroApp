@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AsztroApp v4.6</title>
+    <title>AsztroApp v4.7</title>
     <style>
         :root { 
             --primary-blue: #00008b; 
@@ -121,17 +121,17 @@
         <h1 tabindex="-1">Betöltés...</h1>
     </section>
 
-<section id="login-view" class="hidden">
-    <h2 tabindex="-1">Bejelentkezés</h2>
-    <input type="email" id="login-email" name="username" autocomplete="username" placeholder="E-mail cím">
-    <input type="password" id="login-password" name="password" autocomplete="current-password" placeholder="Jelszó">
-    <button class="btn-main" onclick="handleAuth()">Belépés</button>
-    
-    <div style="text-align: center; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
-        <p style="font-size: 0.9em; color: #5f6368;">Még nincs fiókod?</p>
-        <button class="btn-vissza" onclick="startFreshRegistration()">Új regisztráció</button>
-    </div>
-</section>
+    <section id="login-view" class="hidden">
+        <h2 tabindex="-1">Bejelentkezés</h2>
+        <input type="email" id="login-email" name="username" autocomplete="username" placeholder="E-mail cím">
+        <input type="password" id="login-password" name="password" autocomplete="current-password" placeholder="Jelszó">
+        <button class="btn-main" onclick="handleAuth()">Belépés</button>
+        
+        <div style="text-align: center; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
+            <p style="font-size: 0.9em; color: #5f6368;">Még nincs fiókod?</p>
+            <button class="btn-vissza" onclick="startFreshRegistration()">Új regisztráció</button>
+        </div>
+    </section>
 
     <section id="home-view" class="hidden">
         <div class="nav-bar">
@@ -203,7 +203,9 @@
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx5ED2-QnvwOx8PxP0k6oIPLcXznmUU3tD9OBY2xWZVNfKmFefJjQRjqoQILB7FKDFyww/exec";
+// FRISSÍTETT SCRIPT_URL v4.7
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz2cjwZYubPoPPzypCiwoGlPGpNFIAAsoMLtoMsVQbZnp8fPC9QVQnUccgylI5ROP31Hg/exec";
+
 const PLANETS_CONFIG = [
     {id:"nap", label:"Nap"}, {id:"asc", label:"ASC"}, {id:"hold", label:"Hold"}, 
     {id:"merkur", label:"Merkúr"}, {id:"venusz", label:"Vénusz"}, {id:"mars", label:"Mars"}
@@ -252,7 +254,6 @@ async function handleAuth() {
             appData.usersData = res.usersData;
             updateHomeUI();
             showView('home-view');
-            // JAVÍTÁS 1: Az üzenet eltüntetése a sikeres belépés után
             setTimeout(() => announce(""), 2000);
         } else { 
             const hiba = res.allapotjelzes === "USER_NOT_FOUND" ? "Nincs ilyen felhasználó!" : "Hibás jelszó!";
@@ -269,7 +270,6 @@ function startFreshRegistration() {
     document.getElementById('container-edit-name').classList.add('hidden');
     document.getElementById('reg-auth-fields').classList.remove('hidden');
     
-    // JAVÍTÁS 4: Mezők kényszerített ürítése
     document.getElementById('reg-name').value = "";
     document.getElementById('reg-email').value = "";
     document.getElementById('reg-pass').value = "";
@@ -300,21 +300,25 @@ async function runQuery() {
             const tbody = document.getElementById('results-body');
             tbody.innerHTML = "";
             const m = res.resultMatrix;
-            
-            // JAVÍTÁS 2: Bolygó + Jegy megjelenítése az első oszlopban
             const selectedUserData = appData.usersData[userId];
 
-            for(let i=0; i < m.length; i+=5) {
+            // v4.7: 12-es lépésköz az új adatstruktúra miatt
+            for(let i=0; i < m.length; i+=12) {
                 const tr = document.createElement('tr');
-                const rgb = `rgb(${m[i+2]},${m[i+3]},${m[i+4]})`;
-                const planetKey = PLANETS_CONFIG[i/5].id;
+                
+                // Aktuális hatás színe (index: i+2, i+3, i+4)
+                const rgbAktualis = `rgb(${m[i+2]},${m[i+3]},${m[i+4]})`;
+                // Következő hatás színe (index: i+8, i+9, i+10)
+                const rgbKovetkezo = `rgb(${m[i+8]},${m[i+9]},${m[i+10]})`;
+                
+                const planetKey = PLANETS_CONFIG[i/12].id;
                 const sign = selectedUserData ? selectedUserData[planetKey] : "";
 
                 tr.innerHTML = `
-                    <td><strong>${PLANETS_CONFIG[i/5].label}</strong><span class="planet-sign">${sign}</span></td>
-                    <td><span class="effect-badge" style="background:${rgb}; color: #000;">${m[i+1]}</span></td>
-                    <td>-</td>
-                    <td>-</td>
+                    <td><strong>${PLANETS_CONFIG[i/12].label}</strong><span class="planet-sign">${sign}</span></td>
+                    <td><span class="effect-badge" style="background:${rgbAktualis}; color: #000;">${m[i+1]}</span></td>
+                    <td><span class="effect-badge" style="background:${rgbKovetkezo}; color: #000;">${m[i+7]}</span></td>
+                    <td style="font-size: 0.85em; color: #5f6368;">${m[i+6]}</td>
                 `;
                 tbody.appendChild(tr);
             }
