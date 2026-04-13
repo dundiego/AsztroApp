@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AsztroApp v4.7</title>
+    <title>AsztroApp v4.8</title>
     <style>
         :root { 
             --primary-blue: #00008b; 
@@ -91,23 +91,22 @@
         }
         .show { display: block; }
 
-        table { width: 100%; border-collapse: separate; border-spacing: 0 8px; margin-top: 20px; }
-        th { padding: 12px 4px; text-align: left; font-size: 11px; color: #5f6368; text-transform: uppercase; line-height: 1.2; }
-        td { background: white; padding: 12px 8px; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0 4px; margin-top: 20px; }
+        th { padding: 8px 4px; text-align: left; font-size: 10px; color: #5f6368; text-transform: uppercase; line-height: 1.2; }
+        td { background: white; padding: 10px 8px; border-top: 1px solid #eee; border-bottom: 1px solid #eee; vertical-align: middle; }
         td:first-child { border-left: 1px solid #eee; border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
         td:last-child { border-right: 1px solid #eee; border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
 
-        .effect-badge {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-weight: bold;
-            font-size: 13px;
-            border: 1px solid rgba(0,0,0,0.1);
+        /* Új stílus a VO-barát színes cellákhoz */
+        .color-cell {
+            font-size: 4pt;
+            text-align: center;
+            line-height: 1;
+            padding: 8px !important;
+            min-width: 60px;
         }
 
         .planet-sign { font-size: 0.85em; color: #70757a; font-weight: normal; display: block; margin-top: 2px; }
-
         .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
         .hidden { display: none !important; }
     </style>
@@ -126,7 +125,6 @@
         <input type="email" id="login-email" name="username" autocomplete="username" placeholder="E-mail cím">
         <input type="password" id="login-password" name="password" autocomplete="current-password" placeholder="Jelszó">
         <button class="btn-main" onclick="handleAuth()">Belépés</button>
-        
         <div style="text-align: center; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
             <p style="font-size: 0.9em; color: #5f6368;">Még nincs fiókod?</p>
             <button class="btn-vissza" onclick="startFreshRegistration()">Új regisztráció</button>
@@ -150,10 +148,8 @@
         <div id="selection-panel">
             <label for="user-select" style="display:block; text-align:left; margin-left:8%; font-size: 0.9em; color: #5f6368;">Személy:</label>
             <select id="user-select" onchange="handleUserChange()"></select>
-
             <label for="date-select" style="display:block; text-align:left; margin-left:8%; font-size: 0.9em; color: #5f6368; margin-top: 10px;">Dátum:</label>
             <input type="date" id="date-select" onchange="handleDateChange()">
-            
             <button id="btn-run-query" class="btn-main" onclick="runQuery()">Elemzés indítása</button>
         </div>
 
@@ -183,12 +179,10 @@
                 <button onclick="enableNameEditing()" aria-label="Név módosítása" style="padding: 10px; border-radius: 8px; border: 1px solid #ccc; background: #fff;">✏️</button>
             </div>
         </div>
-        
         <div id="reg-auth-fields" class="hidden">
             <input type="email" id="reg-email" placeholder="Regisztrációs e-mail">
             <input type="password" id="reg-pass" placeholder="Kezdő jelszó">
         </div>
-
         <div id="reg-planets"></div>
         <button id="btn-save" class="btn-main" onclick="submitRegistration()">Mentés</button>
         <button class="btn-vissza" onclick="cancelRegistration()">Mégsem</button>
@@ -203,7 +197,6 @@
 </div>
 
 <script>
-// FRISSÍTETT SCRIPT_URL v4.7
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz2cjwZYubPoPPzypCiwoGlPGpNFIAAsoMLtoMsVQbZnp8fPC9QVQnUccgylI5ROP31Hg/exec";
 
 const PLANETS_CONFIG = [
@@ -227,60 +220,14 @@ function showView(id) {
     document.getElementById("profile-menu").classList.remove("show");
 }
 
-async function handleAuth() {
-    const emailField = document.getElementById('login-email');
-    const passField = document.getElementById('login-password');
-    const email = emailField.value.trim();
-    const pass = passField.value.trim();
-    
-    if(!email || !pass) return alert("Kérlek töltsd ki az adatokat!");
-    
+function formatDateToShort(dateStr) {
+    if (!dateStr || dateStr === "-") return "-";
     try {
-        announce("Bejelentkezés...");
-        const resp = await fetch(SCRIPT_URL, {
-            method: 'POST',
-            mode: 'cors',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ action: 'login', email: email, password: pass, deviceID: deviceID })
-        });
-
-        const text = await resp.text(); 
-        let res;
-        try { res = JSON.parse(text); } catch(e) { throw new Error("Hiba a szerver válaszában."); }
-        
-        if (res.status === "SUCCESS") {
-            localStorage.setItem('asztro_parentID', res.parentID);
-            appData.users = res.users;
-            appData.usersData = res.usersData;
-            updateHomeUI();
-            showView('home-view');
-            setTimeout(() => announce(""), 2000);
-        } else { 
-            const hiba = res.allapotjelzes === "USER_NOT_FOUND" ? "Nincs ilyen felhasználó!" : "Hibás jelszó!";
-            alert("Sikertelen belépés: " + hiba); 
-            announce("Hiba a belépés során.");
-        }
-    } catch(e) { alert("Hiba a kapcsolódás során."); }
-}
-
-function startFreshRegistration() {
-    appData.currentEditID = null;
-    document.getElementById('reg-title').innerText = "Regisztráció";
-    document.getElementById('container-new-name').classList.remove('hidden');
-    document.getElementById('container-edit-name').classList.add('hidden');
-    document.getElementById('reg-auth-fields').classList.remove('hidden');
-    
-    document.getElementById('reg-name').value = "";
-    document.getElementById('reg-email').value = "";
-    document.getElementById('reg-pass').value = "";
-    
-    PLANETS_CONFIG.forEach(p => {
-        const el = document.getElementById("reg-" + p.id);
-        if(el) el.selectedIndex = 0;
-    });
-    
-    showView('reg-view');
-    announce("Kérlek add meg a neved és válaszd ki a jegyeidet!");
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        const honapok = ["jan.", "febr.", "márc.", "ápr.", "máj.", "jún.", "júl.", "aug.", "szept.", "okt.", "nov.", "dec."];
+        return honapok[d.getMonth()] + " " + d.getDate() + ".";
+    } catch(e) { return dateStr; }
 }
 
 async function runQuery() {
@@ -302,23 +249,21 @@ async function runQuery() {
             const m = res.resultMatrix;
             const selectedUserData = appData.usersData[userId];
 
-            // v4.7: 12-es lépésköz az új adatstruktúra miatt
             for(let i=0; i < m.length; i+=12) {
                 const tr = document.createElement('tr');
                 
-                // Aktuális hatás színe (index: i+2, i+3, i+4)
                 const rgbAktualis = `rgb(${m[i+2]},${m[i+3]},${m[i+4]})`;
-                // Következő hatás színe (index: i+8, i+9, i+10)
                 const rgbKovetkezo = `rgb(${m[i+8]},${m[i+9]},${m[i+10]})`;
+                const formattedDate = formatDateToShort(m[i+6]);
                 
                 const planetKey = PLANETS_CONFIG[i/12].id;
                 const sign = selectedUserData ? selectedUserData[planetKey] : "";
 
                 tr.innerHTML = `
                     <td><strong>${PLANETS_CONFIG[i/12].label}</strong><span class="planet-sign">${sign}</span></td>
-                    <td><span class="effect-badge" style="background:${rgbAktualis}; color: #000;">${m[i+1]}</span></td>
-                    <td><span class="effect-badge" style="background:${rgbKovetkezo}; color: #000;">${m[i+7]}</span></td>
-                    <td style="font-size: 0.85em; color: #5f6368;">${m[i+6]}</td>
+                    <td class="color-cell" style="background:${rgbAktualis}; color:${rgbAktualis};">${m[i+1]}</td>
+                    <td class="color-cell" style="background:${rgbKovetkezo}; color:${rgbKovetkezo};">${m[i+7]}</td>
+                    <td style="font-size: 0.85em; color: #5f6368; font-weight: 500;">${formattedDate}</td>
                 `;
                 tbody.appendChild(tr);
             }
@@ -326,6 +271,50 @@ async function runQuery() {
             setTimeout(() => { document.getElementById('first-cell').focus(); }, 100);
         }
     } catch(e) { alert("Szerver hiba."); }
+}
+
+// ... (A többi függvény változatlan marad az előző verzióból) ...
+
+async function handleAuth() {
+    const emailField = document.getElementById('login-email');
+    const passField = document.getElementById('login-password');
+    const email = emailField.value.trim();
+    const pass = passField.value.trim();
+    if(!email || !pass) return alert("Kérlek töltsd ki az adatokat!");
+    try {
+        announce("Bejelentkezés...");
+        const resp = await fetch(SCRIPT_URL, {
+            method: 'POST', mode: 'cors',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'login', email: email, password: pass, deviceID: deviceID })
+        });
+        const text = await resp.text(); 
+        let res;
+        try { res = JSON.parse(text); } catch(e) { throw new Error("Hiba a szerver válaszában."); }
+        if (res.status === "SUCCESS") {
+            localStorage.setItem('asztro_parentID', res.parentID);
+            appData.users = res.users;
+            appData.usersData = res.usersData;
+            updateHomeUI();
+            showView('home-view');
+        } else { 
+            const hiba = res.allapotjelzes === "USER_NOT_FOUND" ? "Nincs ilyen felhasználó!" : "Hibás jelszó!";
+            alert("Sikertelen belépés: " + hiba); 
+        }
+    } catch(e) { alert("Hiba a kapcsolódás során."); }
+}
+
+function startFreshRegistration() {
+    appData.currentEditID = null;
+    document.getElementById('reg-title').innerText = "Regisztráció";
+    document.getElementById('container-new-name').classList.remove('hidden');
+    document.getElementById('container-edit-name').classList.add('hidden');
+    document.getElementById('reg-auth-fields').classList.remove('hidden');
+    document.getElementById('reg-name').value = "";
+    document.getElementById('reg-email').value = "";
+    document.getElementById('reg-pass').value = "";
+    PLANETS_CONFIG.forEach(p => { const el = document.getElementById("reg-" + p.id); if(el) el.selectedIndex = 0; });
+    showView('reg-view');
 }
 
 function updateHomeUI() {
@@ -406,7 +395,6 @@ async function submitRegistration() {
     const isUpdate = appData.currentEditID !== null;
     const currentParentID = localStorage.getItem('asztro_parentID');
     const isNewUser = !currentParentID;
-    
     let name = "";
     if (!document.getElementById('container-new-name').classList.contains('hidden')) {
         name = document.getElementById('reg-name').value.trim();
@@ -414,30 +402,18 @@ async function submitRegistration() {
         const sel = document.getElementById('reg-name-select');
         name = sel.options[sel.selectedIndex].text;
     }
-
     if (!name) return alert("Név megadása kötelező!");
     const planets = {};
     PLANETS_CONFIG.forEach(p => planets[p.id] = document.getElementById("reg-" + p.id).value);
-
-    const payload = {
-        action: isUpdate ? "update" : "register",
-        parentID: currentParentID,
-        deviceID: deviceID,
-        userID: appData.currentEditID,
-        name: name,
-        planets: planets
-    };
-
+    const payload = { action: isUpdate ? "update" : "register", parentID: currentParentID, deviceID: deviceID, userID: appData.currentEditID, name: name, planets: planets };
     if (isNewUser) {
         payload.email = document.getElementById('reg-email').value.trim();
         payload.password = document.getElementById('reg-pass').value.trim();
     }
-
     try {
         announce("Mentés...");
         const resp = await fetch(SCRIPT_URL, {
-            method: 'POST',
-            mode: 'cors',
+            method: 'POST', mode: 'cors',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify(payload)
         });
@@ -469,14 +445,12 @@ async function confirmDelete() {
     if(!confirm("Biztosan törlöd?")) return;
     try {
         const resp = await fetch(SCRIPT_URL, {
-            method: 'POST',
-            mode: 'cors',
+            method: 'POST', mode: 'cors',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({ action: 'delete', userID: userID, parentID: localStorage.getItem('asztro_parentID'), deviceID: deviceID })
         });
         const res = await resp.json();
         if (res.status === "ACCOUNT_DELETED") {
-            alert("A fiókod és minden kapcsolódó adat sikeresen törölve.");
             localStorage.clear();
             appData = { users: {}, usersData: {} };
             showView('login-view');
@@ -492,8 +466,7 @@ async function confirmDelete() {
 async function checkSession(pID) {
     try {
         const resp = await fetch(SCRIPT_URL, { 
-            method: 'POST', 
-            mode: 'cors', 
+            method: 'POST', mode: 'cors',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({ action: 'checkSession', parentID: pID, deviceID: deviceID }) 
         });
