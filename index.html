@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AsztroApp v5.0</title>
+    <title>AsztroApp v5.1</title>
     <style>
         :root { 
             --primary-blue: #00008b; 
@@ -79,14 +79,15 @@
 
         /* --- Táblázatok --- */
         table { width: 100%; border-collapse: separate; border-spacing: 0 4px; }
-        th { padding: 8px; text-align: left; font-size: 10px; color: #5f6368; text-transform: uppercase; }
+        th { padding: 8px; text-align: left; font-size: 11px; color: #5f6368; text-transform: uppercase; white-space: nowrap; }
         td { background: white; padding: 10px 8px; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
 
         /* Havi táblázat specifikus */
         #monthly-table-container { width: 100%; overflow-x: auto; margin-top: 10px; }
         .color-cell {
-            width: 60px; height: 45px; font-size: 4pt; text-align: center;
+            width: 65px; height: 45px; font-size: 8pt; text-align: center;
             vertical-align: middle; border: 0.5px solid rgba(0,0,0,0.05);
+            font-weight: bold;
         }
         .sticky-col { position: sticky; left: 0; background: white !important; z-index: 2; border-right: 2px solid #eee; }
 
@@ -114,8 +115,8 @@
 
     <section id="login-view" class="hidden">
         <h2 style="text-align:center">Bejelentkezés</h2>
-        <input type="email" id="login-email" placeholder="E-mail cím">
-        <input type="password" id="login-password" placeholder="Jelszó">
+        <input type="email" id="login-email" placeholder="E-mail cím" onkeydown="if(event.key==='Enter') document.getElementById('login-password').focus();">
+        <input type="password" id="login-password" placeholder="Jelszó" onkeydown="if(event.key==='Enter') handleAuth();">
         <button class="btn-main" onclick="handleAuth()">Belépés</button>
         <button class="btn-vissza" onclick="startFreshRegistration()">Új regisztráció</button>
     </section>
@@ -125,7 +126,10 @@
         <div id="pane-aktuális" class="tab-pane">
             <h1 style="font-size: 1.1em; text-align: center;">Aktuális hatások</h1>
             <select id="user-select" onchange="handleUserChange()"></select>
+            
+            <label for="date-select" class="sr-only">Válassz dátumot az elemzéshez</label>
             <input type="date" id="date-select" onchange="handleDateChange()">
+            
             <button class="btn-main" onclick="runQuery()">Elemzés indítása</button>
             
             <div id="query-results" class="hidden">
@@ -141,7 +145,10 @@
         <div id="pane-havi" class="tab-pane hidden">
             <h1 style="font-size: 1.1em; text-align: center;">Havi elemzés</h1>
             <p style="text-align:center; font-size: 0.9em; color: #5f6368;">Válassz egy hónapot az összefoglaló táblázathoz.</p>
+            
+            <label for="monthly-date-picker" style="display:block; text-align:center; margin-bottom:5px;" class="sr-only">Keresendő év és hónap</label>
             <input type="month" id="monthly-date-picker">
+            
             <button class="btn-main" onclick="startMonthlyAnalysis()">Havi tábla generálása</button>
         </div>
 
@@ -196,7 +203,6 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwaFJE39LBnGFdMV4IgA
 const PLANETS_CONFIG = [{id:"nap", label:"Nap"}, {id:"asc", label:"ASC"}, {id:"hold", label:"Hold"}, {id:"merkur", label:"Merkúr"}, {id:"venusz", label:"Vénusz"}, {id:"mars", label:"Mars"}];
 const ZODIACS = ["Kos", "Bika", "Ikrek", "Rák", "Oroszlán", "Szűz", "Mérleg", "Skorpió", "Nyilas", "Bak", "Vízöntő", "Halak"];
 
-// --- SZÍNEK ---
 const COLOR_MAP = {
     1: { name: "világoszöld", rgb: "rgb(156, 225, 89)" },
     2: { name: "sötétzöld", rgb: "rgb(122, 174, 62)" },
@@ -206,7 +212,7 @@ const COLOR_MAP = {
     6: { name: "piros", rgb: "rgb(255, 18, 31)" }
 };
 
-let appData = { users: {}, usersData: {}, currentEditID: null };
+let appData = { users: {}, usersData: {}, currentEditID: null, minDate: "1900-01-01", maxDate: "2100-12-31" };
 let deviceID = localStorage.getItem('asztro_deviceID') || 'DEV-' + Math.random().toString(36).substr(2, 9).toUpperCase();
 localStorage.setItem('asztro_deviceID', deviceID);
 
@@ -215,7 +221,6 @@ function announce(msg) { document.getElementById('announcer').innerText = msg; }
 function showView(id) {
     document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
     document.getElementById(id).classList.remove('hidden');
-    // Tab bar csak a fő nézetnél és a profilnál látszódjon
     if(id === 'main-view') document.getElementById('app-tab-bar').classList.remove('hidden');
     else if (id !== 'monthly-table-view') document.getElementById('app-tab-bar').classList.add('hidden');
 }
@@ -228,14 +233,21 @@ function switchTab(target) {
     announce(target + " nézet.");
 }
 
-// --- HAVI LOGIKA (H-ALGORITMUS) ---
+// Dinamikus határérték beállítás a dátumválasztóhoz
+function applyDateLimits(min, max) {
+    const dSelect = document.getElementById('date-select');
+    if (dSelect && min && max) {
+        dSelect.min = min;
+        dSelect.max = max;
+    }
+}
+
 async function startMonthlyAnalysis() {
     const dateVal = document.getElementById('monthly-date-picker').value;
     if(!dateVal) return alert("Válassz hónapot!");
 
     announce("Adatok betöltése. A táblázat fekvő nézetben jelenik meg.");
     
-    // Tájolás lock (ha a böngésző engedi)
     try { if(screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape'); } catch(e){}
 
     showView('loading-view');
@@ -249,6 +261,10 @@ async function startMonthlyAnalysis() {
         if(res.status === "SUCCESS") {
             renderMonthlyTable(res.data);
             showView('monthly-table-view');
+        } else {
+            alert(res.message || "Nincs adat erre a hónapra.");
+            showView('main-view');
+            switchTab('havi');
         }
     } catch(e) { alert("Hiba a lekérdezés során."); showView('main-view'); }
 }
@@ -259,14 +275,15 @@ function renderMonthlyTable(data) {
     document.getElementById('monthly-title').innerText = `${y}. ${m}. havi hatások`;
 
     let html = `<table><thead><tr><th class="sticky-col">Dátum</th>`;
-    ZODIACS.forEach(z => html += `<th>${z.substring(0,3)}</th>`);
+    // 4. JAVÍTÁS: Nem vágjuk le a jegyek neveit, így teljesen felolvasható és olvasható!
+    ZODIACS.forEach(z => html += `<th>${z}</th>`);
     html += `</tr></thead><tbody>`;
 
     Object.keys(data).sort().forEach(date => {
-        html += `<tr><td class="sticky-col">${date.split('-')[2]}.</td>`;
+        html += `<tr><td class="sticky-col">${parseInt(date.split('-')[2])}.</td>`;
         data[date].forEach(colorId => {
-            const c = COLOR_MAP[colorId] || {name:"", rgb:"#eee"};
-            html += `<td class="color-cell" style="background:${c.rgb}; color:${c.rgb};" aria-label="${c.name}">${c.name}</td>`;
+            const c = COLOR_MAP[colorId] || {name:"fehér", rgb:"#ffffff"};
+            html += `<td class="color-cell" style="background:${c.rgb}; color:${c.rgb === '#ffffff' ? '#000' : c.rgb};" aria-label="${c.name}">${colorId !== 0 ? colorId : ''}</td>`;
         });
         html += `</tr>`;
     });
@@ -280,7 +297,6 @@ function exitMonthlyView() {
     switchTab('havi');
 }
 
-// --- MEGLÉVŐ FUNKCIÓK INTEGRÁLÁSA ---
 async function runQuery() {
     const userId = document.getElementById('user-select').value;
     const date = document.getElementById('date-select').value;
@@ -309,67 +325,5 @@ async function runQuery() {
 async function handleAuth() {
     const email = document.getElementById('login-email').value;
     const pass = document.getElementById('login-password').value;
+    if(!email || !pass) return alert("Minden mezőt tölts ki!");
     showView('loading-view');
-    try {
-        const resp = await fetch(SCRIPT_URL, {
-            method: 'POST', mode: 'cors',
-            body: JSON.stringify({ action: 'login', email: email, password: pass, deviceID: deviceID })
-        });
-        const res = await resp.json();
-        if(res.status === "SUCCESS") {
-            localStorage.setItem('asztro_parentID', res.parentID);
-            appData.users = res.users;
-            appData.usersData = res.usersData;
-            updateHomeUI();
-            showView('main-view');
-        } else { alert("Hiba!"); showView('login-view'); }
-    } catch(e) { showView('login-view'); }
-}
-
-function updateHomeUI() {
-    const sel = document.getElementById('user-select');
-    sel.innerHTML = "";
-    for(let id in appData.users) {
-        let opt = document.createElement('option');
-        opt.value = id; opt.text = appData.users[id];
-        sel.appendChild(opt);
-    }
-    document.getElementById('date-select').valueAsDate = new Date();
-}
-
-function generateRegFields() {
-    const cont = document.getElementById('reg-planets');
-    cont.innerHTML = "";
-    PLANETS_CONFIG.forEach(p => {
-        const wrap = document.createElement('div');
-        wrap.innerHTML = `<label style="font-size:0.8em; margin-left:8%;">${p.label}</label>`;
-        const s = document.createElement('select');
-        s.id = "reg-" + p.id;
-        ZODIACS.forEach(z => { const o = document.createElement('option'); o.value=z; o.text=z; s.appendChild(o); });
-        wrap.appendChild(s);
-        cont.appendChild(wrap);
-    });
-}
-
-function logout() { localStorage.removeItem('asztro_parentID'); location.reload(); }
-
-window.onload = async () => {
-    generateRegFields();
-    const pID = localStorage.getItem('asztro_parentID');
-    if (pID) {
-        try {
-            const resp = await fetch(SCRIPT_URL, {
-                method: 'POST', mode: 'cors',
-                body: JSON.stringify({ action: 'checkSession', parentID: pID, deviceID: deviceID })
-            });
-            const res = await resp.json();
-            if(res.status === "SESSION_OK") {
-                appData.users = res.users; appData.usersData = res.usersData;
-                updateHomeUI(); showView('main-view');
-            } else showView('login-view');
-        } catch(e) { showView('login-view'); }
-    } else showView('login-view');
-};
-</script>
-</body>
-</html>
