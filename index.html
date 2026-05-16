@@ -2,8 +2,8 @@
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AsztroApp v4.8</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AsztroApp v5.0</title>
     <style>
         :root { 
             --primary-blue: #00008b; 
@@ -11,7 +11,7 @@
             --vissza-bg: #f1f3f4; 
             --accent-yellow: #fce062;
             --border-color: #bdc1c6;
-            --focus-blue: #8ab4f8;
+            --bg-gray: #f8f9fa;
         }
 
         body { 
@@ -19,11 +19,12 @@
             margin: 0; 
             padding: 15px; 
             color: #202124; 
-            background-color: #f8f9fa;
+            background-color: var(--bg-gray);
+            padding-bottom: 80px; /* Hely a tab barnak */
         }
 
         section {
-            max-width: 600px;
+            max-width: 800px;
             margin: 0 auto;
             background: var(--white);
             padding: 20px;
@@ -31,84 +32,72 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.12);
         }
 
-        .btn-main, .btn-vissza {
-            width: 85%;
-            padding: 14px;
-            border: none;
-            border-radius: 8px;
-            display: block;
-            margin: 15px auto;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: opacity 0.2s;
+        /* --- Tab Bar Stílusok --- */
+        .tab-bar {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background-color: var(--white);
+            border-top: 1px solid var(--border-color);
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 65px;
+            z-index: 1000;
+            padding-bottom: env(safe-area-inset-bottom);
         }
 
+        .tab-btn {
+            flex: 1;
+            border: none;
+            background: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: #5f6368;
+            cursor: pointer;
+            font-size: 11px;
+        }
+
+        .tab-btn.active { color: var(--primary-blue); font-weight: bold; }
+        .tab-icon { font-size: 20px; }
+
+        /* --- Gombok és Inputok --- */
+        .btn-main, .btn-vissza {
+            width: 85%; padding: 14px; border: none; border-radius: 8px;
+            display: block; margin: 15px auto; font-size: 16px; font-weight: 600; cursor: pointer;
+        }
         .btn-main { background-color: var(--primary-blue); color: var(--white); }
         .btn-vissza { background-color: var(--vissza-bg); color: #3c4043; border: 1px solid #dadce0; }
         
         select, input { 
-            width: 85%; 
-            padding: 12px; 
-            margin: 15px auto; 
-            display: block; 
-            border: 2px solid var(--border-color); 
-            border-radius: 8px; 
-            font-size: 16px; 
-            background-color: #ffffff;
-            box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
-            transition: border-color 0.2s, box-shadow 0.2s;
+            width: 85%; padding: 12px; margin: 15px auto; display: block; 
+            border: 2px solid var(--border-color); border-radius: 8px; font-size: 16px;
         }
 
-        select:focus, input:focus {
-            border-color: var(--primary-blue);
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(0, 0, 139, 0.2);
-        }
+        /* --- Táblázatok --- */
+        table { width: 100%; border-collapse: separate; border-spacing: 0 4px; }
+        th { padding: 8px; text-align: left; font-size: 10px; color: #5f6368; text-transform: uppercase; }
+        td { background: white; padding: 10px 8px; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
 
-        .nav-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .menu-container { position: relative; }
-        .menu-content { 
-            display: none; 
-            position: absolute; 
-            right: 0; 
-            background-color: white; 
-            min-width: 180px; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
-            z-index: 100; 
-            border-radius: 8px; 
-            overflow: hidden;
-        }
-        .menu-content button { 
-            padding: 15px; 
-            border: none; 
-            width: 100%; 
-            text-align: left; 
-            background: none; 
-            cursor: pointer; 
-            border-bottom: 1px solid #eee;
-            font-size: 14px;
-        }
-        .show { display: block; }
-
-        table { width: 100%; border-collapse: separate; border-spacing: 0 4px; margin-top: 20px; }
-        th { padding: 8px 4px; text-align: left; font-size: 10px; color: #5f6368; text-transform: uppercase; line-height: 1.2; }
-        td { background: white; padding: 10px 8px; border-top: 1px solid #eee; border-bottom: 1px solid #eee; vertical-align: middle; }
-        td:first-child { border-left: 1px solid #eee; border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
-        td:last-child { border-right: 1px solid #eee; border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
-
-        /* Új stílus a VO-barát színes cellákhoz */
+        /* Havi táblázat specifikus */
+        #monthly-table-container { width: 100%; overflow-x: auto; margin-top: 10px; }
         .color-cell {
-            font-size: 4pt;
-            text-align: center;
-            line-height: 1;
-            padding: 8px !important;
-            min-width: 60px;
+            width: 60px; height: 45px; font-size: 4pt; text-align: center;
+            vertical-align: middle; border: 0.5px solid rgba(0,0,0,0.05);
         }
+        .sticky-col { position: sticky; left: 0; background: white !important; z-index: 2; border-right: 2px solid #eee; }
 
-        .planet-sign { font-size: 0.85em; color: #70757a; font-weight: normal; display: block; margin-top: 2px; }
+        .planet-sign { font-size: 0.85em; color: #70757a; display: block; }
         .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
         .hidden { display: none !important; }
+        
+        /* Landscape nézet kényszerítése táblázatnál */
+        @media screen and (orientation: landscape) {
+            section { max-width: 100%; }
+        }
     </style>
 </head>
 <body>
@@ -117,93 +106,105 @@
     <div id="announcer" class="sr-only" aria-live="assertive"></div>
 
     <section id="loading-view">
-        <h1 tabindex="-1">Betöltés...</h1>
+        <div style="text-align:center; padding: 40px 0;">
+            <div style="font-size: 80px;">✨</div>
+            <h1 id="loading-text">Adatok betöltése...</h1>
+        </div>
     </section>
 
     <section id="login-view" class="hidden">
-        <h2 tabindex="-1">Bejelentkezés</h2>
-        <input type="email" id="login-email" name="username" autocomplete="username" placeholder="E-mail cím">
-        <input type="password" id="login-password" name="password" autocomplete="current-password" placeholder="Jelszó">
+        <h2 style="text-align:center">Bejelentkezés</h2>
+        <input type="email" id="login-email" placeholder="E-mail cím">
+        <input type="password" id="login-password" placeholder="Jelszó">
         <button class="btn-main" onclick="handleAuth()">Belépés</button>
-        <div style="text-align: center; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
-            <p style="font-size: 0.9em; color: #5f6368;">Még nincs fiókod?</p>
-            <button class="btn-vissza" onclick="startFreshRegistration()">Új regisztráció</button>
+        <button class="btn-vissza" onclick="startFreshRegistration()">Új regisztráció</button>
+    </section>
+
+    <section id="main-view" class="hidden">
+        
+        <div id="pane-aktuális" class="tab-pane">
+            <h1 style="font-size: 1.1em; text-align: center;">Aktuális hatások</h1>
+            <select id="user-select" onchange="handleUserChange()"></select>
+            <input type="date" id="date-select" onchange="handleDateChange()">
+            <button class="btn-main" onclick="runQuery()">Elemzés indítása</button>
+            
+            <div id="query-results" class="hidden">
+                <table>
+                    <thead>
+                        <tr><th>Bolygó</th><th>Aktuális</th><th>Köv.</th><th>Dátum</th></tr>
+                    </thead>
+                    <tbody id="results-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="pane-havi" class="tab-pane hidden">
+            <h1 style="font-size: 1.1em; text-align: center;">Havi elemzés</h1>
+            <p style="text-align:center; font-size: 0.9em; color: #5f6368;">Válassz egy hónapot az összefoglaló táblázathoz.</p>
+            <input type="month" id="monthly-date-picker">
+            <button class="btn-main" onclick="startMonthlyAnalysis()">Havi tábla generálása</button>
+        </div>
+
+        <div id="pane-profil" class="tab-pane hidden">
+            <h1 style="font-size: 1.1em; text-align: center;">Beállítások</h1>
+            <button class="btn-vissza" onclick="prepareNewChild()">➕ Új személy hozzáadása</button>
+            <button class="btn-vissza" onclick="editCurrentProfile()">✏️ Profil módosítása</button>
+            <button class="btn-vissza" style="color: #d93025;" onclick="deleteProfile()">🗑️ Profil törlése</button>
+            <hr style="margin: 20px auto; width: 85%; border: 0; border-top: 1px solid #eee;">
+            <button class="btn-main" style="background: #5f6368;" onclick="logout()">Kijelentkezés</button>
         </div>
     </section>
 
-    <section id="home-view" class="hidden">
-        <div class="nav-bar">
-            <h1 id="home-title" tabindex="-1" style="font-size: 1.1em;">Aktuális hatások</h1>
-            <div class="menu-container">
-                <button onclick="toggleMenu()" aria-label="Profilkezelő menü" style="font-size: 24px; background:none; border:none; cursor:pointer; padding: 10px;">👤⚙️</button>
-                <div id="profile-menu" class="menu-content">
-                    <button onclick="prepareNewChild()">Új személy hozzáadása</button>
-                    <button onclick="editCurrentProfile()">Módosítás</button>
-                    <button onclick="deleteProfile()" style="color: #d93025;">Törlés</button>
-                    <button onclick="logout()">Kijelentkezés</button>
-                </div>
-            </div>
+    <section id="monthly-table-view" class="hidden" style="position: fixed; top:0; left:0; width:100%; height:100%; border-radius:0; z-index: 2000; overflow: auto;">
+        <div style="display: flex; align-items: center; padding: 10px; background: white; border-bottom: 1px solid #eee; position: sticky; top: 0; z-index: 100;">
+            <button onclick="exitMonthlyView()" style="padding: 10px; background: #eee; border:none; border-radius: 5px;">⬅️ Vissza</button>
+            <h2 id="monthly-title" style="margin-left: 15px; font-size: 1em;"></h2>
         </div>
-        
-        <div id="selection-panel">
-            <label for="user-select" style="display:block; text-align:left; margin-left:8%; font-size: 0.9em; color: #5f6368;">Személy:</label>
-            <select id="user-select" onchange="handleUserChange()"></select>
-            <label for="date-select" style="display:block; text-align:left; margin-left:8%; font-size: 0.9em; color: #5f6368; margin-top: 10px;">Dátum:</label>
-            <input type="date" id="date-select" onchange="handleDateChange()">
-            <button id="btn-run-query" class="btn-main" onclick="runQuery()">Elemzés indítása</button>
-        </div>
-
-        <div id="query-results" class="hidden">
-            <table>
-                <thead>
-                    <tr>
-                        <th id="first-cell" tabindex="-1">Bolygó /<br>Jegy</th>
-                        <th>Aktuális<br>hatás</th>
-                        <th>Következő<br>hatás</th>
-                        <th>Következő hatás<br>kezdete</th>
-                    </tr>
-                </thead>
-                <tbody id="results-body"></tbody>
-            </table>
-        </div>
+        <div id="monthly-table-container"></div>
     </section>
 
     <section id="reg-view" class="hidden">
-        <h2 id="reg-title" tabindex="-1">Adatlap</h2>
-        <div id="container-new-name" class="hidden">
-            <input type="text" id="reg-name" placeholder="Név">
-        </div>
+        <h2 id="reg-title">Adatlap</h2>
+        <div id="container-new-name"><input type="text" id="reg-name" placeholder="Név"></div>
         <div id="container-edit-name" class="hidden">
-            <div style="display: flex; width: 85%; margin: 0 auto; gap: 5px;">
-                <select id="reg-name-select" style="width: 100%; margin: 0;" onchange="loadPlanetDataToReg()"></select>
-                <button onclick="enableNameEditing()" aria-label="Név módosítása" style="padding: 10px; border-radius: 8px; border: 1px solid #ccc; background: #fff;">✏️</button>
-            </div>
+            <select id="reg-name-select" onchange="loadPlanetDataToReg()"></select>
         </div>
         <div id="reg-auth-fields" class="hidden">
-            <input type="email" id="reg-email" placeholder="Regisztrációs e-mail">
-            <input type="password" id="reg-pass" placeholder="Kezdő jelszó">
+            <input type="email" id="reg-email" placeholder="E-mail">
+            <input type="password" id="reg-pass" placeholder="Jelszó">
         </div>
         <div id="reg-planets"></div>
-        <button id="btn-save" class="btn-main" onclick="submitRegistration()">Mentés</button>
-        <button class="btn-vissza" onclick="cancelRegistration()">Mégsem</button>
-    </section>
-
-    <section id="delete-view" class="hidden">
-        <h2 id="delete-title" tabindex="-1">Törlés</h2>
-        <select id="delete-user-select"></select>
-        <button class="btn-main" style="background-color: #d93025;" onclick="confirmDelete()">Végleges törlés</button>
-        <button class="btn-vissza" onclick="cancelRegistration()">Vissza</button>
+        <button class="btn-main" onclick="submitRegistration()">Mentés</button>
+        <button class="btn-vissza" onclick="showView('main-view')">Mégsem</button>
     </section>
 </div>
 
-<script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz2cjwZYubPoPPzypCiwoGlPGpNFIAAsoMLtoMsVQbZnp8fPC9QVQnUccgylI5ROP31Hg/exec";
+<nav id="app-tab-bar" class="tab-bar hidden">
+    <button id="btn-tab-aktuális" class="tab-btn active" onclick="switchTab('aktuális')">
+        <span class="tab-icon">📅</span><span>Aktuális</span>
+    </button>
+    <button id="btn-tab-havi" class="tab-btn" onclick="switchTab('havi')">
+        <span class="tab-icon">📊</span><span>Havi</span>
+    </button>
+    <button id="btn-tab-profil" class="tab-btn" onclick="switchTab('profil')">
+        <span class="tab-icon">👤</span><span>Profil</span>
+    </button>
+</nav>
 
-const PLANETS_CONFIG = [
-    {id:"nap", label:"Nap"}, {id:"asc", label:"ASC"}, {id:"hold", label:"Hold"}, 
-    {id:"merkur", label:"Merkúr"}, {id:"venusz", label:"Vénusz"}, {id:"mars", label:"Mars"}
-];
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwaFJE39LBnGFdMV4IgAwxcWGtwZdfI_pqPxkbM86lrPwsC3SIS68gItO5ZKnwdEmJK0w/exec";
+const PLANETS_CONFIG = [{id:"nap", label:"Nap"}, {id:"asc", label:"ASC"}, {id:"hold", label:"Hold"}, {id:"merkur", label:"Merkúr"}, {id:"venusz", label:"Vénusz"}, {id:"mars", label:"Mars"}];
 const ZODIACS = ["Kos", "Bika", "Ikrek", "Rák", "Oroszlán", "Szűz", "Mérleg", "Skorpió", "Nyilas", "Bak", "Vízöntő", "Halak"];
+
+// --- SZÍNEK ---
+const COLOR_MAP = {
+    1: { name: "világoszöld", rgb: "rgb(156, 225, 89)" },
+    2: { name: "sötétzöld", rgb: "rgb(122, 174, 62)" },
+    3: { name: "sárga", rgb: "rgb(252, 224, 98)" },
+    4: { name: "barna", rgb: "rgb(84, 63, 21)" },
+    5: { name: "kék", rgb: "rgb(82, 170, 217)" },
+    6: { name: "piros", rgb: "rgb(255, 18, 31)" }
+};
 
 let appData = { users: {}, usersData: {}, currentEditID: null };
 let deviceID = localStorage.getItem('asztro_deviceID') || 'DEV-' + Math.random().toString(36).substr(2, 9).toUpperCase();
@@ -213,108 +214,116 @@ function announce(msg) { document.getElementById('announcer').innerText = msg; }
 
 function showView(id) {
     document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
-    const target = document.getElementById(id);
-    target.classList.remove('hidden');
-    const h = target.querySelector('h1, h2');
-    if (h) h.focus();
-    document.getElementById("profile-menu").classList.remove("show");
+    document.getElementById(id).classList.remove('hidden');
+    // Tab bar csak a fő nézetnél és a profilnál látszódjon
+    if(id === 'main-view') document.getElementById('app-tab-bar').classList.remove('hidden');
+    else if (id !== 'monthly-table-view') document.getElementById('app-tab-bar').classList.add('hidden');
 }
 
-function formatDateToShort(dateStr) {
-    if (!dateStr || dateStr === "-") return "-";
+function switchTab(target) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('hidden'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('pane-' + target).classList.remove('hidden');
+    document.getElementById('btn-tab-' + target).classList.add('active');
+    announce(target + " nézet.");
+}
+
+// --- HAVI LOGIKA (H-ALGORITMUS) ---
+async function startMonthlyAnalysis() {
+    const dateVal = document.getElementById('monthly-date-picker').value;
+    if(!dateVal) return alert("Válassz hónapot!");
+
+    announce("Adatok betöltése. A táblázat fekvő nézetben jelenik meg.");
+    
+    // Tájolás lock (ha a böngésző engedi)
+    try { if(screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape'); } catch(e){}
+
+    showView('loading-view');
+
     try {
-        const d = new Date(dateStr);
-        if (isNaN(d.getTime())) return dateStr;
-        const honapok = ["jan.", "febr.", "márc.", "ápr.", "máj.", "jún.", "júl.", "aug.", "szept.", "okt.", "nov.", "dec."];
-        return honapok[d.getMonth()] + " " + d.getDate() + ".";
-    } catch(e) { return dateStr; }
+        const resp = await fetch(SCRIPT_URL, {
+            method: 'POST', mode: 'cors',
+            body: JSON.stringify({ action: 'queryMonthly', month: dateVal, deviceID: deviceID })
+        });
+        const res = await resp.json();
+        if(res.status === "SUCCESS") {
+            renderMonthlyTable(res.data);
+            showView('monthly-table-view');
+        }
+    } catch(e) { alert("Hiba a lekérdezés során."); showView('main-view'); }
 }
 
+function renderMonthlyTable(data) {
+    const container = document.getElementById('monthly-table-container');
+    const [y, m] = document.getElementById('monthly-date-picker').value.split('-');
+    document.getElementById('monthly-title').innerText = `${y}. ${m}. havi hatások`;
+
+    let html = `<table><thead><tr><th class="sticky-col">Dátum</th>`;
+    ZODIACS.forEach(z => html += `<th>${z.substring(0,3)}</th>`);
+    html += `</tr></thead><tbody>`;
+
+    Object.keys(data).sort().forEach(date => {
+        html += `<tr><td class="sticky-col">${date.split('-')[2]}.</td>`;
+        data[date].forEach(colorId => {
+            const c = COLOR_MAP[colorId] || {name:"", rgb:"#eee"};
+            html += `<td class="color-cell" style="background:${c.rgb}; color:${c.rgb};" aria-label="${c.name}">${c.name}</td>`;
+        });
+        html += `</tr>`;
+    });
+    html += `</tbody></table>`;
+    container.innerHTML = html;
+}
+
+function exitMonthlyView() {
+    try { if(screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch(e){}
+    showView('main-view');
+    switchTab('havi');
+}
+
+// --- MEGLÉVŐ FUNKCIÓK INTEGRÁLÁSA ---
 async function runQuery() {
     const userId = document.getElementById('user-select').value;
     const date = document.getElementById('date-select').value;
-    if(!date) return alert("Válassz dátumot!");
     try {
-        announce("Lekérdezés...");
         const resp = await fetch(SCRIPT_URL, {
-            method: 'POST',
-            mode: 'cors',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            method: 'POST', mode: 'cors',
             body: JSON.stringify({ action: 'query', userID: userId, lekerdezettDatum: date, parentID: localStorage.getItem('asztro_parentID'), deviceID: deviceID })
         });
         const res = await resp.json();
         if(res.status === "SUCCESS") {
             const tbody = document.getElementById('results-body');
             tbody.innerHTML = "";
-            const m = res.resultMatrix;
-            const selectedUserData = appData.usersData[userId];
-
-            for(let i=0; i < m.length; i+=12) {
-                const tr = document.createElement('tr');
-                
-                const rgbAktualis = `rgb(${m[i+2]},${m[i+3]},${m[i+4]})`;
-                const rgbKovetkezo = `rgb(${m[i+8]},${m[i+9]},${m[i+10]})`;
-                const formattedDate = formatDateToShort(m[i+6]);
-                
-                const planetKey = PLANETS_CONFIG[i/12].id;
-                const sign = selectedUserData ? selectedUserData[planetKey] : "";
-
-                tr.innerHTML = `
-                    <td><strong>${PLANETS_CONFIG[i/12].label}</strong><span class="planet-sign">${sign}</span></td>
-                    <td class="color-cell" style="background:${rgbAktualis}; color:${rgbAktualis};">${m[i+1]}</td>
-                    <td class="color-cell" style="background:${rgbKovetkezo}; color:${rgbKovetkezo};">${m[i+7]}</td>
-                    <td style="font-size: 0.85em; color: #5f6368; font-weight: 500;">${formattedDate}</td>
-                `;
-                tbody.appendChild(tr);
-            }
+            res.resultMatrix.forEach((m, i) => {
+                if(i % 12 === 0) {
+                    const tr = document.createElement('tr');
+                    const rgb = `rgb(${res.resultMatrix[i+2]},${res.resultMatrix[i+3]},${res.resultMatrix[i+4]})`;
+                    tr.innerHTML = `<td>${PLANETS_CONFIG[i/12].label}</td><td style="background:${rgb}; color:${rgb}">${res.resultMatrix[i+1]}</td><td>-</td><td>-</td>`;
+                    tbody.appendChild(tr);
+                }
+            });
             document.getElementById('query-results').classList.remove('hidden');
-            setTimeout(() => { document.getElementById('first-cell').focus(); }, 100);
         }
-    } catch(e) { alert("Szerver hiba."); }
+    } catch(e) { alert("Hiba."); }
 }
 
-// ... (A többi függvény változatlan marad az előző verzióból) ...
-
 async function handleAuth() {
-    const emailField = document.getElementById('login-email');
-    const passField = document.getElementById('login-password');
-    const email = emailField.value.trim();
-    const pass = passField.value.trim();
-    if(!email || !pass) return alert("Kérlek töltsd ki az adatokat!");
+    const email = document.getElementById('login-email').value;
+    const pass = document.getElementById('login-password').value;
+    showView('loading-view');
     try {
-        announce("Bejelentkezés...");
         const resp = await fetch(SCRIPT_URL, {
             method: 'POST', mode: 'cors',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({ action: 'login', email: email, password: pass, deviceID: deviceID })
         });
-        const text = await resp.text(); 
-        let res;
-        try { res = JSON.parse(text); } catch(e) { throw new Error("Hiba a szerver válaszában."); }
-        if (res.status === "SUCCESS") {
+        const res = await resp.json();
+        if(res.status === "SUCCESS") {
             localStorage.setItem('asztro_parentID', res.parentID);
             appData.users = res.users;
             appData.usersData = res.usersData;
             updateHomeUI();
-            showView('home-view');
-        } else { 
-            const hiba = res.allapotjelzes === "USER_NOT_FOUND" ? "Nincs ilyen felhasználó!" : "Hibás jelszó!";
-            alert("Sikertelen belépés: " + hiba); 
-        }
-    } catch(e) { alert("Hiba a kapcsolódás során."); }
-}
-
-function startFreshRegistration() {
-    appData.currentEditID = null;
-    document.getElementById('reg-title').innerText = "Regisztráció";
-    document.getElementById('container-new-name').classList.remove('hidden');
-    document.getElementById('container-edit-name').classList.add('hidden');
-    document.getElementById('reg-auth-fields').classList.remove('hidden');
-    document.getElementById('reg-name').value = "";
-    document.getElementById('reg-email').value = "";
-    document.getElementById('reg-pass').value = "";
-    PLANETS_CONFIG.forEach(p => { const el = document.getElementById("reg-" + p.id); if(el) el.selectedIndex = 0; });
-    showView('reg-view');
+            showView('main-view');
+        } else { alert("Hiba!"); showView('login-view'); }
+    } catch(e) { showView('login-view'); }
 }
 
 function updateHomeUI() {
@@ -331,173 +340,35 @@ function updateHomeUI() {
 function generateRegFields() {
     const cont = document.getElementById('reg-planets');
     cont.innerHTML = "";
-    PLANETS_CONFIG.forEach((p, index) => {
+    PLANETS_CONFIG.forEach(p => {
         const wrap = document.createElement('div');
-        wrap.style.marginBottom = "10px";
-        wrap.innerHTML = `<label style="display:block; font-size:0.8em; margin-left:8%;">${p.label}:</label>`;
-        const sel = document.createElement('select');
-        sel.id = "reg-" + p.id;
-        ZODIACS.forEach(z => {
-            const opt = document.createElement('option');
-            opt.value = z; opt.text = z;
-            sel.appendChild(opt);
-        });
-        sel.onchange = () => {
-            const nextIdx = index + 1;
-            if (nextIdx < PLANETS_CONFIG.length) { document.getElementById("reg-" + PLANETS_CONFIG[nextIdx].id).focus(); }
-            else { document.getElementById("btn-save").focus(); }
-        };
-        wrap.appendChild(sel);
+        wrap.innerHTML = `<label style="font-size:0.8em; margin-left:8%;">${p.label}</label>`;
+        const s = document.createElement('select');
+        s.id = "reg-" + p.id;
+        ZODIACS.forEach(z => { const o = document.createElement('option'); o.value=z; o.text=z; s.appendChild(o); });
+        wrap.appendChild(s);
         cont.appendChild(wrap);
     });
 }
 
-function toggleMenu() { document.getElementById("profile-menu").classList.toggle("show"); }
-
-function prepareNewChild() {
-    appData.currentEditID = null;
-    document.getElementById('reg-title').innerText = "Új személy";
-    document.getElementById('container-new-name').classList.remove('hidden');
-    document.getElementById('container-edit-name').classList.add('hidden');
-    document.getElementById('reg-auth-fields').classList.add('hidden');
-    document.getElementById('reg-name').value = "";
-    PLANETS_CONFIG.forEach(p => document.getElementById("reg-" + p.id).selectedIndex = 0);
-    showView('reg-view');
-}
-
-function editCurrentProfile() {
-    const mainSelect = document.getElementById('user-select');
-    if(!mainSelect.value) return;
-    appData.currentEditID = mainSelect.value;
-    document.getElementById('reg-title').innerText = "Módosítás";
-    document.getElementById('container-new-name').classList.add('hidden');
-    document.getElementById('container-edit-name').classList.remove('hidden');
-    document.getElementById('reg-auth-fields').classList.add('hidden');
-    const regSelect = document.getElementById('reg-name-select');
-    regSelect.innerHTML = mainSelect.innerHTML;
-    regSelect.value = mainSelect.value;
-    loadPlanetDataToReg();
-    showView('reg-view');
-}
-
-function loadPlanetDataToReg() {
-    const userID = document.getElementById('reg-name-select').value;
-    if (appData.usersData && appData.usersData[userID]) {
-        const data = appData.usersData[userID];
-        PLANETS_CONFIG.forEach(p => {
-            const el = document.getElementById("reg-" + p.id);
-            if (el && data[p.id]) el.value = data[p.id];
-        });
-    }
-}
-
-async function submitRegistration() {
-    const isUpdate = appData.currentEditID !== null;
-    const currentParentID = localStorage.getItem('asztro_parentID');
-    const isNewUser = !currentParentID;
-    let name = "";
-    if (!document.getElementById('container-new-name').classList.contains('hidden')) {
-        name = document.getElementById('reg-name').value.trim();
-    } else {
-        const sel = document.getElementById('reg-name-select');
-        name = sel.options[sel.selectedIndex].text;
-    }
-    if (!name) return alert("Név megadása kötelező!");
-    const planets = {};
-    PLANETS_CONFIG.forEach(p => planets[p.id] = document.getElementById("reg-" + p.id).value);
-    const payload = { action: isUpdate ? "update" : "register", parentID: currentParentID, deviceID: deviceID, userID: appData.currentEditID, name: name, planets: planets };
-    if (isNewUser) {
-        payload.email = document.getElementById('reg-email').value.trim();
-        payload.password = document.getElementById('reg-pass').value.trim();
-    }
-    try {
-        announce("Mentés...");
-        const resp = await fetch(SCRIPT_URL, {
-            method: 'POST', mode: 'cors',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify(payload)
-        });
-        const res = await resp.json();
-        if (res.status === "SUCCESS") {
-            if (res.parentID || res.userID) {
-                const newPID = res.parentID || res.userID;
-                if (!currentParentID) localStorage.setItem('asztro_parentID', newPID);
-            }
-            appData.users = res.users;
-            appData.usersData = res.usersData;
-            updateHomeUI();
-            showView('home-view');
-            alert("Sikeres mentés!");
-        } else { alert("Hiba: " + (res.allapotjelzes || "Ismeretlen hiba")); }
-    } catch (e) { alert("Hiba mentéskor."); }
-}
-
-function deleteProfile() {
-    const mainSelect = document.getElementById('user-select');
-    const delSelect = document.getElementById('delete-user-select');
-    delSelect.innerHTML = mainSelect.innerHTML;
-    delSelect.value = mainSelect.value;
-    showView('delete-view');
-}
-
-async function confirmDelete() {
-    const userID = document.getElementById('delete-user-select').value;
-    if(!confirm("Biztosan törlöd?")) return;
-    try {
-        const resp = await fetch(SCRIPT_URL, {
-            method: 'POST', mode: 'cors',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ action: 'delete', userID: userID, parentID: localStorage.getItem('asztro_parentID'), deviceID: deviceID })
-        });
-        const res = await resp.json();
-        if (res.status === "ACCOUNT_DELETED") {
-            localStorage.clear();
-            appData = { users: {}, usersData: {} };
-            showView('login-view');
-        } else if(res.status === "SUCCESS") {
-            appData.users = res.users;
-            appData.usersData = res.usersData;
-            updateHomeUI(); 
-            showView('home-view'); 
-        }
-    } catch(e) { alert("Hiba törléskor."); }
-}
-
-async function checkSession(pID) {
-    try {
-        const resp = await fetch(SCRIPT_URL, { 
-            method: 'POST', mode: 'cors',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ action: 'checkSession', parentID: pID, deviceID: deviceID }) 
-        });
-        const res = await resp.json();
-        if (res.status === "SESSION_OK") {
-            appData.users = res.users;
-            appData.usersData = res.usersData;
-            updateHomeUI();
-            showView('home-view');
-        } else { showView('login-view'); }
-    } catch(e) { showView('login-view'); }
-}
-
-function handleUserChange() { document.getElementById('date-select').focus(); }
-function handleDateChange() { document.getElementById('btn-run-query').focus(); }
-function cancelRegistration() { 
-    if (localStorage.getItem('asztro_parentID')) showView('home-view'); 
-    else showView('login-view');
-}
 function logout() { localStorage.removeItem('asztro_parentID'); location.reload(); }
-function enableNameEditing() {
-    document.getElementById('container-edit-name').classList.add('hidden');
-    document.getElementById('container-new-name').classList.remove('hidden');
-    document.getElementById('reg-name').value = document.getElementById('reg-name-select').options[document.getElementById('reg-name-select').selectedIndex].text;
-    document.getElementById('reg-name').focus();
-}
 
 window.onload = async () => {
     generateRegFields();
     const pID = localStorage.getItem('asztro_parentID');
-    if (pID) await checkSession(pID); else showView('login-view');
+    if (pID) {
+        try {
+            const resp = await fetch(SCRIPT_URL, {
+                method: 'POST', mode: 'cors',
+                body: JSON.stringify({ action: 'checkSession', parentID: pID, deviceID: deviceID })
+            });
+            const res = await resp.json();
+            if(res.status === "SESSION_OK") {
+                appData.users = res.users; appData.usersData = res.usersData;
+                updateHomeUI(); showView('main-view');
+            } else showView('login-view');
+        } catch(e) { showView('login-view'); }
+    } else showView('login-view');
 };
 </script>
 </body>
