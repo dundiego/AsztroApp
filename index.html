@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AsztroApp v5.1</title>
+    <title>AsztroApp v5.2</title>
     <style>
         :root { 
             --primary-blue: #00008b; 
@@ -85,9 +85,14 @@
         /* Havi táblázat specifikus */
         #monthly-table-container { width: 100%; overflow-x: auto; margin-top: 10px; }
         .color-cell {
-            width: 65px; height: 45px; font-size: 8pt; text-align: center;
-            vertical-align: middle; border: 0.5px solid rgba(0,0,0,0.05);
-            font-weight: bold;
+            width: 65px; height: 45px; 
+            text-align: center;
+            vertical-align: middle; 
+            border: 0.5px solid rgba(0,0,0,0.05);
+            /* Trükkös akadálymentesítés CSS szabályai: nem engedjük torzulni a méretet a rejtett szövegtől */
+            font-size: 2px; 
+            overflow: hidden;
+            white-space: nowrap;
         }
         .sticky-col { position: sticky; left: 0; background: white !important; z-index: 2; border-right: 2px solid #eee; }
 
@@ -233,7 +238,6 @@ function switchTab(target) {
     announce(target + " nézet.");
 }
 
-// Dinamikus határérték beállítás a dátumválasztóhoz
 function applyDateLimits(min, max) {
     const dSelect = document.getElementById('date-select');
     if (dSelect && min && max) {
@@ -275,15 +279,18 @@ function renderMonthlyTable(data) {
     document.getElementById('monthly-title').innerText = `${y}. ${m}. havi hatások`;
 
     let html = `<table><thead><tr><th class="sticky-col">Dátum</th>`;
-    // 4. JAVÍTÁS: Nem vágjuk le a jegyek neveit, így teljesen felolvasható és olvasható!
     ZODIACS.forEach(z => html += `<th>${z}</th>`);
     html += `</tr></thead><tbody>`;
 
     Object.keys(data).sort().forEach(date => {
         html += `<tr><td class="sticky-col">${parseInt(date.split('-')[2])}.</td>`;
         data[date].forEach(colorId => {
+            // Ha a kapott id 0 vagy nincs benne a mapben, akkor fehér/üres mezőt adunk
             const c = COLOR_MAP[colorId] || {name:"fehér", rgb:"#ffffff"};
-            html += `<td class="color-cell" style="background:${c.rgb}; color:${c.rgb === '#ffffff' ? '#000' : c.rgb};" aria-label="${c.name}">${colorId !== 0 ? colorId : ''}</td>`;
+            
+            // JAVÍTÁS: A háttérszín ÉS a betűszín azonos, a cella belsejébe pedig a szám helyett a szín neve kerül!
+            // Így a VO felolvassa, de vizuálisan nem látszik szövegként.
+            html += `<td class="color-cell" style="background:${c.rgb}; color:${c.rgb};" aria-label="${c.name}">${c.name}</td>`;
         });
         html += `</tr>`;
     });
@@ -338,7 +345,6 @@ async function handleAuth() {
             appData.users = res.users;
             appData.usersData = res.usersData;
             
-            // Mentjük a kapott dátum korlátokat ha jöttek
             if(res.minDate) appData.minDate = res.minDate;
             if(res.maxDate) appData.maxDate = res.maxDate;
             
@@ -357,7 +363,6 @@ function updateHomeUI() {
         sel.appendChild(opt);
     }
     
-    // Alapértelmezett mai dátum és a szerver min/max korlátainak rögzítése
     const dSelect = document.getElementById('date-select');
     dSelect.valueAsDate = new Date();
     applyDateLimits(appData.minDate, appData.maxDate);
@@ -404,16 +409,13 @@ window.onload = async () => {
                 updateHomeUI(); 
                 showView('main-view');
             } else {
-                // Ha létezik a pID, de a szerver szerint lejárt (pl. EXPIRED)
                 showView('login-view');
             }
         } catch(e) { 
-            // Hálózati hiba vagy JSON parse hiba esetén sem engedjük lefagyni
             console.error("Session ellenőrzési hiba:", e);
             showView('login-view'); 
         }
     } else {
-        // Ha nincs is elmentett szülő ID, azonnal a belépés jön
         showView('login-view');
     }
 };
