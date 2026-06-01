@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AsztroApp v5.2</title>
+    <title>AsztroApp v5.3</title>
     <style>
         :root { 
             --primary-blue: #00008b; 
@@ -204,7 +204,7 @@
 </nav>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzL3Hz8ESthUzg7QhBjpozXOd2gm2tqEdMW0zAkp8XtzUVlhXifsb0vLd8EeXGGmDY7LA/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzvTB4-BWKvRUuunSeH8LYkuhYPn9OLWdxrMqHsbXuUvdeePNdyqwxugsSzOCxNER8YxQ/exec";
 const PLANETS_CONFIG = [{id:"nap", label:"Nap"}, {id:"asc", label:"ASC"}, {id:"hold", label:"Hold"}, {id:"merkur", label:"Merkúr"}, {id:"venusz", label:"Vénusz"}, {id:"mars", label:"Mars"}];
 const ZODIACS = ["Kos", "Bika", "Ikrek", "Rák", "Oroszlán", "Szűz", "Mérleg", "Skorpió", "Nyilas", "Bak", "Vízöntő", "Halak"];
 
@@ -246,32 +246,6 @@ function applyDateLimits(min, max) {
     }
 }
 
-async function startMonthlyAnalysis() {
-    const dateVal = document.getElementById('monthly-date-picker').value;
-    if(!dateVal) return alert("Válassz hónapot!");
-
-    announce("Adatok betöltése. A táblázat fekvő nézetben jelenik meg.");
-    
-    try { if(screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape'); } catch(e){}
-
-    showView('loading-view');
-
-    try {
-        const resp = await fetch(SCRIPT_URL, {
-            method: 'POST', mode: 'cors',
-            body: JSON.stringify({ action: 'queryMonthly', month: dateVal, deviceID: deviceID })
-        });
-        const res = await resp.json();
-        if(res.status === "SUCCESS") {
-            renderMonthlyTable(res.data);
-            showView('monthly-table-view');
-        } else {
-            alert(res.message || "Nincs adat erre a hónapra.");
-            showView('main-view');
-            switchTab('havi');
-        }
-    } catch(e) { alert("Hiba a lekérdezés során."); showView('main-view'); }
-}
 
 function renderMonthlyTable(data) {
     const container = document.getElementById('monthly-table-container');
@@ -303,32 +277,108 @@ function exitMonthlyView() {
     showView('main-view');
     switchTab('havi');
 }
-
+// Aktuális nézet lekérdezése (új 6-os adatstruktúrával és VO betöltés kezeléssel)
 async function runQuery() {
     const userId = document.getElementById('user-select').value;
     const date = document.getElementById('date-select').value;
+    
+    // Vizuális és hangalapú betöltés indítása
+    showView('loading-view');
+    announce("Betöltés folyamatban...");
+
     try {
         const resp = await fetch(SCRIPT_URL, {
             method: 'POST', mode: 'cors',
             body: JSON.stringify({ action: 'query', userID: userId, lekerdezettDatum: date, parentID: localStorage.getItem('asztro_parentID'), deviceID: deviceID })
         });
         const res = await resp.json();
+        
         if(res.status === "SUCCESS") {
             const tbody = document.getElementById('results-body');
             tbody.innerHTML = "";
-            res.resultMatrix.forEach((m, i) => {
-                if(i % 12 === 0) {
-                    const tr = document.createElement('tr');
-                    const rgb = `rgb(${res.resultMatrix[i+2]},${res.resultMatrix[i+3]},${res.resultMatrix[i+4]})`;
-                    tr.innerHTML = `<td>${PLANETS_CONFIG[i/12].label}</td><td style="background:${rgb}; color:${rgb}">${res.resultMatrix[i+1]}</td><td>-</td><td>-</td>`;
-                    tbody.appendChild(tr);
-                }
-            });
+            
+            // Itt i += 6, mert pontosan 6 elemet kapunk vissza bolygónként!
+            for(let i = 0; i < res.resultMatrix.length; i += 6) {
+                const pIndex = i / 6;
+                if(pIndex >= PLANETS_CONFIG.length) break;
+                const planet = PLANETS_CONFIG[pIndex];
+
+                const currDateCode  = res.resultMatrix[i];
+                const currColorCode = res.resultMatrix[i+1];
+                const currSign      = res.resultMatrix[i+2];
+                const nextDate      = res.resultMatrix[i+3];
+                const nextColorCode = res.resultMatrix[i+4];
+                // const nextSign   = res.resultMatrix[i+5]; // A 6. érték is megjön, de a felületen nem kérjük le.
+
+                // Hiányzó adatok (kötőjelek) kezelése
+                const isMissing = currDateCode === "-";
+
+                // Színek kiolvasása a COLOR_MAP-ből, ha hiányzik, visszaadunk egy üres állványt
+                const getC = (code) => COLOR_MAP[code] || { name: "nincs adat", rgb: "transparent" };
+                const currColor = getC(currColorCode);
+                const nextColor = getC(nextColorCode);
+
+                // A havi nézetnél jól bevált akadálymentesített color-cell használata az aktuális nézetben is
+                let row = `<tr>
+                    <td>${planet.label} <span class="planet-sign">(${isMissing ? "-" : currSign})</span></td>
+                    
+                    <td class="color-cell" style="background:${isMissing ? 'transparent' : currColor.rgb}; color:${isMissing ? '#202124' : currColor.rgb};" aria-label="Aktuális hatás színe: ${isMissing ? 'nincs adat' : currColor.name}">${isMissing ? "-" : currColor.name}</td>
+                    
+                    <td class="color-cell" style="background:${isMissing ? 'transparent' : nextColor.rgb}; color:${isMissing ? '#202124' : nextColor.rgb};" aria-label="Következő hatás színe: ${isMissing ? 'nincs adat' : nextColor.name}">${isMissing ? "-" : nextColor.name}</td>
+                    
+                    <td>${isMissing ? "-" : nextDate}</td>
+                </tr>`;
+                
+                tbody.innerHTML += row;
+            }
+            
+            // Nézet váltása és "Betöltés kész" esemény bemondása!
+            showView('main-view');
             document.getElementById('query-results').classList.remove('hidden');
+            announce("Betöltés kész! Az aktuális hatások táblázata megjelenítve.");
         }
-    } catch(e) { alert("Hiba."); }
+    } catch(e) { 
+        alert("Hiba a lekérdezés során."); 
+        showView('main-view'); 
+        announce("Hiba történt a betöltés során.");
+    }
 }
 
+// Havi nézet lekérdezése (VO állapotok szinkronizálása) v53
+async function startMonthlyAnalysis() {
+    const dateVal = document.getElementById('monthly-date-picker').value;
+    if(!dateVal) return alert("Válassz hónapot!");
+
+    // Itt csak bemondjuk, a showView('loading-view') kirakja a vizuális töltőt
+    showView('loading-view');
+    announce("Havi adatok betöltése folyamatban. A táblázat fekvő nézetben fog megjelenni.");
+    
+    try { if(screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape'); } catch(e){}
+
+    try {
+        const resp = await fetch(SCRIPT_URL, {
+            method: 'POST', mode: 'cors',
+            body: JSON.stringify({ action: 'queryMonthly', month: dateVal, deviceID: deviceID })
+        });
+        const res = await resp.json();
+        
+        if(res.status === "SUCCESS") {
+            renderMonthlyTable(res.data);
+            showView('monthly-table-view');
+            // Amikor ténylegesen kirajzolta:
+            announce("Betöltés kész! A havi táblázat megnyílt.");
+        } else {
+            alert(res.message || "Nincs adat erre a hónapra.");
+            showView('main-view');
+            switchTab('havi');
+            announce("Nincs találat a megadott hónapra.");
+        }
+    } catch(e) { 
+        alert("Hiba a lekérdezés során."); 
+        showView('main-view'); 
+        announce("Hiba történt a betöltés során.");
+    }
+}
 async function handleAuth() {
     const email = document.getElementById('login-email').value;
     const pass = document.getElementById('login-password').value;
